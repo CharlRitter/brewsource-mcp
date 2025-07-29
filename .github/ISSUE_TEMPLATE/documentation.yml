@@ -1,0 +1,96 @@
+name: 📖 Documentation Issue
+description: Report an issue with documentation or suggest improvements
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Clear documentation is essential for an open-source project.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation is this about?
+      options:
+        - README.md
+        - API Documentation
+        - Setup/Installation Guide
+        - Development Guide
+        - User Stories
+        - Test Plan
+        - Project Overview
+        - Code Comments
+        - Example Code
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing Information
+        - Incorrect Information
+        - Unclear/Confusing
+        - Outdated Information
+        - Broken Links
+        - Formatting Issues
+        - Grammar/Spelling
+        - New Documentation Needed
+        - Translation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-docs
+    attributes:
+      label: Current Documentation
+      description: Please link to or describe the current documentation that needs improvement
+      placeholder: |
+        Link: https://github.com/your-repo/brewsource-mcp/blob/main/docs/...
+        Section: "Quick Start - Step 3"
+        Issue: The database setup command doesn't work on macOS
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        Please provide specific suggestions for improvement, including:
+        - What information should be added/changed
+        - How it could be explained more clearly
+        - Any examples that would be helpful
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the documentation issue
+      placeholder: |
+        - Which user persona would benefit from this improvement?
+        - Have you seen this done well in other projects?
+        - Any screenshots or examples?
+
+  - type: checkboxes
+    id: willing-to-help
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to submit a pull request to fix this documentation issue
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](../CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

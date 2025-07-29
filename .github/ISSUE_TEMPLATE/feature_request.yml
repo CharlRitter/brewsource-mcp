@@ -1,0 +1,98 @@
+name: ✨ Feature Request
+description: Suggest an idea for BrewSource MCP Server
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible about your idea.
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Development Phase
+      description: Which phase of our roadmap does this feature align with?
+      options:
+        - Phase 1 - Core Public Resources (MVP)
+        - Phase 2 - Expanding Public Resources
+        - Phase 3 - Premium/Personal Features
+        - Phase 4 - Advanced Features
+        - Phase 5 - Future Development
+        - Not sure / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem is.
+      placeholder: "I'm always frustrated when..."
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+      placeholder: "I would like to see..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the system would this feature affect?
+      options:
+        - MCP Tools (new tool)
+        - MCP Resources (new resource)
+        - BJCP Style Features
+        - Beer/Brewery Search
+        - Brewing Calculations
+        - Database Schema
+        - API Endpoints
+        - Documentation
+        - Infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe a specific scenario where this feature would be useful
+      placeholder: |
+        As a [user type], I want to [goal] so that [benefit].
+
+        Example scenario:
+        1. User connects to MCP server
+        2. User asks AI assistant about hop substitutions
+        3. AI calls new hop_substitute tool
+        4. User gets recommendations with flavor profiles
+
+  - type: checkboxes
+    id: willing-to-implement
+    attributes:
+      label: Implementation
+      options:
+        - label: I am willing to submit a pull request to implement this feature
+        - label: This feature requires database schema changes
+        - label: This feature requires new external API integrations
+        - label: This feature requires documentation updates
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this feature request, you agree to follow our [Code of Conduct](../CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

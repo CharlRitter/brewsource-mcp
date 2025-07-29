@@ -1,0 +1,6 @@
+# CODEOWNERS file for BrewSource MCP Server
+# This file defines who owns/maintains different parts of the codebase
+# GitHub will automatically request reviews from these users for relevant PRs
+
+# Global ownership - CharlRitter owns the entire repository by default
+* @CharlRitter

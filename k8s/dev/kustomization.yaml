@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: brewsource-mcp-dev
+
+namespace: brewsource-dev
+
+resources:
+  - ../base
+
+commonLabels:
+  environment: development
+
+patchesStrategicMerge:
+  - patches/brewsource-dev.yaml
+  - patches/postgres-dev.yaml
+
+configMapGenerator:
+  - name: brewsource-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource_dev?sslmode=disable
+
+images:
+  - name: brewsource-mcp
+    newTag: dev

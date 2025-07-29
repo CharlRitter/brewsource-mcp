@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: brewsource-dev
+  labels:
+    name: brewsource-dev
+    environment: development

@@ -1,0 +1,21 @@
+# Kind cluster configuration for BrewSource MCP development
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: brewsource-dev
+
+# Single control-plane node with port mappings
+nodes:
+- role: control-plane
+  extraPortMappings:
+  # Port forward for MCP server
+  - containerPort: 8080
+    hostPort: 8080
+    protocol: TCP
+  # Port forward for PostgreSQL
+  - containerPort: 5432
+    hostPort: 5432
+    protocol: TCP
+  # Port forward for Redis
+  - containerPort: 6379
+    hostPort: 6379
+    protocol: TCP

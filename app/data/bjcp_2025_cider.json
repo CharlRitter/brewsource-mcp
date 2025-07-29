@@ -1,0 +1,146 @@
+{
+  "styles": {
+    "C1A": {
+      "code": "C1A",
+      "name": "Common Cider",
+      "category": "Traditional Cider",
+      "overall_impression": "A refreshing drink with the character of fresh apples, though not necessarily exhibiting strong varietal character. The apple character must be present but may be subtle. These ciders are generally lower in tannin and higher in acidity. Balance and drinkability are the critical success factors.",
+      "appearance": "Clear to brilliant. Color should be that of apple juice, ranging from straw to medium gold. May have very pale greenish tint from certain apple varietals. Usually still, though light effervescence is acceptable.",
+      "aroma": "Sweet apple aroma; may have subtle apple varietal character. Low levels of DMS are acceptable but not required. Commercial examples may have very subtle sulfur note, though this is not a requirement. No significant esters unless from fruit additions. Clean fermentation profile is strongly preferred.",
+      "flavour": "",
+      "mouthfeel": "Light to medium body. Low to moderate acidity; should not be aggressively high. Low levels of astringency and tannin are acceptable but should not dominate.",
+      "comments": "Common Ciders are made primarily from culinary (table) apples. Compared to most other styles in this category, these ciders are generally lower in tannin and higher in acidity.",
+      "history": "",
+      "characteristic_ingredients": "Apples (usually culinary/table apples). No additional ingredients beyond standard cider-making adjuncts (sulfites, etc.).",
+      "style_comparison": "More refreshing and less complex than Heirloom Cider. Less tannin and often higher acidity than most other traditional cider styles.",
+      "commercial_examples": [
+        "Austin Eastciders Original",
+        "Citizen Cider The Dirty Mayor",
+        "Downeast Cider House Original Blend",
+        "Samuel Smith's Organic Cider",
+        "Wandering Aengus Oaked Dry"
+      ],
+      "vitals": {
+        "abv_min": 5.0,
+        "abv_max": 8.0,
+        "ibu_min": null,
+        "ibu_max": null,
+        "srm_min": null,
+        "srm_max": null,
+        "og_min": 1.045,
+        "og_max": 1.065,
+        "fg_min": 0.995,
+        "fg_max": 1.01
+      }
+    },
+    "C1B": {
+      "code": "C1B",
+      "name": "Heirloom Cider",
+      "category": "Traditional Cider",
+      "overall_impression": "A cider exhibiting the unique characteristics of particular apple varieties. Character ranges from subtle to intense, but should always be distinctive, refreshing, and pleasant. These ciders should have more character and complexity than a Common Cider.",
+      "appearance": "Clear to brilliant. Color ranges from pale straw to deep gold, and may have orange, pink, red, or greenish tints depending on apple varieties used. Still to lightly sparkling.",
+      "aroma": "Pronounced apple aroma with distinctive varietal character. Different apple varieties exhibit a range from bright and fruity to rich and complex. DMS is generally inappropriate. Esters may be present but should be subtle and not compete with apple character. Clean fermentation profile.",
+      "flavour": "",
+      "mouthfeel": "Light to medium body, depending on apple varieties and strength. Acidity should be sufficient to give a refreshing character, moderate to high. Astringency from apple tannins may range from none to moderate; shouldn't be excessive or out of balance.",
+      "comments": "Heirloom Ciders are made from heritage, old-world, or other apple varieties developed specifically for cider-making. Many (but not all) of these apple varieties are more tannic and flavorful than culinary apples.",
+      "history": "",
+      "characteristic_ingredients": "Primarily heritage, old-world, or other specialty cider apple varieties that were developed specifically for cider-making. Common examples include Kingston Black, Dabinett, Foxwhelp, Brown Snout, Somerset Redstreak, and other English cider apple varieties.",
+      "style_comparison": "More complex and character-driven than Common Cider. More assertive apple character and potentially more tannins than most other traditional cider styles.",
+      "commercial_examples": [
+        "Æppeltreow Appely Brut and Doux",
+        "Bellwether Hard Cider Heritage Blend",
+        "Portland Cider Co. Kinda Dry",
+        "Westcott Bay Traditional Very Dry",
+        "Wandering Aengus Dry Cider"
+      ],
+      "vitals": {
+        "abv_min": 5.0,
+        "abv_max": 8.0,
+        "ibu_min": null,
+        "ibu_max": null,
+        "srm_min": null,
+        "srm_max": null,
+        "og_min": 1.045,
+        "og_max": 1.065,
+        "fg_min": 0.995,
+        "fg_max": 1.015
+      }
+    },
+    "C3A": {
+      "code": "C3A",
+      "name": "Fruit Cider",
+      "category": "Specialty Cider",
+      "overall_impression": "Like a white wine with complex flavors. The apple character must always be present, and must fit with the added fruit. If a spirit barrel was used, the character of the spirit may range from subtle to balanced and complementary.",
+      "appearance": "Clear to brilliant. Color should be that of a standard cider unless other declared ingredients or processes contribute color. The color contribution of the added fruit, if any, should be apparent but harmonious.",
+      "aroma": "The cider character must be present and usually noticeable. The added fruit character should be noticeable but not so prominent as to obscure the apple base. If a variety of apple is declared, the specific apple varietal character should be noticeable. The added fruit should lend an attractive and distinctive character, but not be harsh or unnatural.",
+      "flavour": "",
+      "mouthfeel": "Substantial. May be significantly tannic, depending on the fruit added, but this should be balanced and not excessive. Some fruits may contribute additional acidity; this should be pleasant and balanced.",
+      "comments": "A cider with additional non-apple fruit or fruit juices added. The apple character must always be present, and must fit with added fruits.",
+      "history": "",
+      "characteristic_ingredients": "Apples or apple cider, with additional fruit or fruit juices. No other fermentable sugars should be added unless fruit requires it for fermentation.",
+      "style_comparison": "Compared to Fruit Beer, a Fruit Cider should not have the malty character associated with beer, and should exhibit more apple character. Compared to Common Cider, a Fruit Cider will be fruitier and potentially more complex.",
+      "commercial_examples": [
+        "Apple Valley Black Currant",
+        "Bauman's Cider Loganberry",
+        "Tandem Ciders Strawberry Jam",
+        "Tieton Cranberry",
+        "Uncle John's Apple Cherry Hard Cider",
+        "Vander Mill Bluish Gold"
+      ],
+      "vitals": {
+        "abv_min": 5.0,
+        "abv_max": 9.0,
+        "ibu_min": null,
+        "ibu_max": null,
+        "srm_min": null,
+        "srm_max": null,
+        "og_min": 1.045,
+        "og_max": 1.07,
+        "fg_min": 0.995,
+        "fg_max": 1.01
+      }
+    },
+    "C4A": {
+      "code": "C4A",
+      "name": "Common Perry",
+      "category": "Perry",
+      "overall_impression": "Mild and refreshing. Sweet perry character is most important--acidity and astringency should provide balance and not be prominent. Typically made with culinary pears that impart little astringency to the perry.",
+      "appearance": "Slightly cloudy to clear. Generally quite pale, often lighter than apple cider. May have very pale greenish-yellow tint. Still to lightly sparkling.",
+      "aroma": "There should be a subtle to moderate perry character, but not necessarily recognizable as any single variety of pear. Generally dry perry will not have as intense of an aroma as sweet perry. Some slight alcohol aroma may be present. If made with eating pears, a subtle Bartlett pear character is acceptable. DMS and other sulfur-based compounds are generally not appropriate, unless very low level. Clean fermentation profile is strongly preferred.",
+      "flavour": "",
+      "mouthfeel": "Light to medium body. Generally low levels of astringency and tannin, though these can vary with pear varieties used and cider-making technique. Some acidity is expected for balance, and should be refreshing rather than harsh.",
+      "comments": "Common Perry is made from culinary (table) pears. Pears contain more residual sugar than apples, contributing to a different character.",
+      "history": "",
+      "characteristic_ingredients": "Pears (usually culinary/table pears like Bartlett). Perry pears are not required for this style.",
+      "style_comparison": "More delicate than apple cider, sometimes with more residual sweetness. Perry is typically lighter and more delicate than cider.",
+      "commercial_examples": [
+        "Æppeltreow Perry",
+        "Bellwether Hard Cider Champagne de le Pomme (Perry)",
+        "Portland Cider Co. Perfect Perry"
+      ],
+      "vitals": {
+        "abv_min": 5.0,
+        "abv_max": 7.0,
+        "ibu_min": null,
+        "ibu_max": null,
+        "srm_min": null,
+        "srm_max": null,
+        "og_min": 1.045,
+        "og_max": 1.06,
+        "fg_min": 1.0,
+        "fg_max": 1.015
+      }
+    }
+  },
+  "categories": [
+    "Perry",
+    "Specialty Cider",
+    "Traditional Cider"
+  ],
+  "metadata": {
+    "version": "2025",
+    "source": "bjcp.org",
+    "last_updated": "2025-07-29",
+    "total_styles": 4
+  }
+}

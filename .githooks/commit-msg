@@ -1,0 +1,86 @@
+#!/bin/bash
+# commit-msg hook for Conventional Commits validation
+# This hook validates that commit messages follow the Conventional Commits specification
+# https://www.conventionalcommits.org/
+
+commit_regex='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .{1,72}'
+
+error_msg="❌ Invalid commit message format!
+
+Commit message must follow Conventional Commits specification:
+<type>[optional scope]: <description>
+
+Types:
+  feat:     A new feature
+  fix:      A bug fix
+  docs:     Documentation only changes
+  style:    Changes that do not affect the meaning of the code
+  refactor: A code change that neither fixes a bug nor adds a feature
+  test:     Adding missing tests or correcting existing tests
+  chore:    Changes to build process or auxiliary tools
+  perf:     A code change that improves performance
+  ci:       Changes to CI configuration files and scripts
+  build:    Changes that affect the build system or external dependencies
+  revert:   Reverts a previous commit
+
+Examples:
+  ✅ feat: add BJCP style lookup functionality
+  ✅ fix(api): resolve null pointer exception in beer search
+  ✅ docs: update installation instructions
+  ✅ test: add unit tests for brewing calculations
+  ✅ chore(deps): update Go dependencies
+
+Current commit message:
+$(cat $1)
+"
+
+# Read the commit message
+commit_message=$(cat $1)
+
+# Check if it's a merge commit
+if grep -q "^Merge " $1; then
+    exit 0
+fi
+
+# Check if it's a revert commit
+if grep -q "^Revert " $1; then
+    exit 0
+fi
+
+# Skip if it's an amend with no message change
+if [ -z "$commit_message" ]; then
+    exit 0
+fi
+
+# Validate the commit message format
+if ! echo "$commit_message" | grep -qE "$commit_regex"; then
+    echo "$error_msg"
+    exit 1
+fi
+
+# Additional checks for commit message quality
+first_line=$(echo "$commit_message" | head -n1)
+
+# Check if description starts with lowercase (except for proper nouns)
+if echo "$first_line" | grep -E ': [A-Z]' | grep -vE ': (API|BJCP|MCP|HTTP|JSON|SQL|URL|UUID|ID|UI|UX)'; then
+    echo "❌ Commit description should start with lowercase letter (except proper nouns)"
+    echo "Current: $first_line"
+    exit 1
+fi
+
+# Check if description ends with period
+if echo "$first_line" | grep -q '\.$'; then
+    echo "❌ Commit description should not end with a period"
+    echo "Current: $first_line"
+    exit 1
+fi
+
+# Check for imperative mood indicators
+if echo "$first_line" | grep -qE ': (added|fixed|updated|changed|removed|deleted)'; then
+    echo "⚠️  Consider using imperative mood (add, fix, update, change, remove, delete)"
+    echo "Current: $first_line"
+    echo "Example: Instead of 'added', use 'add'"
+fi
+
+echo "✅ Commit message follows Conventional Commits specification"
+exit 0

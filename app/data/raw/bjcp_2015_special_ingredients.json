@@ -1,0 +1,66 @@
+{
+  "title": "BJCP Special Ingredient Descriptions",
+  "year": "2014",
+  "description": "Comprehensive descriptions of special ingredients used in brewing, including honey varieties, fruits, grains, and other specialty ingredients commonly referenced in BJCP style guidelines.",
+  "sections": {
+    "honey": {
+      "description": "Honey is the primary fermentable in mead production and can significantly impact flavour, aroma, and color characteristics.",
+      "varieties": {
+        "wildflower": {
+          "description": "Light coloured honey with subtle, complex floral notes. Most common honey variety used in commercial mead production.",
+          "character": "Mild, floral, balanced"
+        },
+        "clover": {
+          "description": "Light to medium amber honey with clean, mild flavour. Very popular for traditional meads.",
+          "character": "Clean, mild sweetness, subtle floral notes"
+        },
+        "orange_blossom": {
+          "description": "Light coloured honey with distinctive citrus aroma and flavour notes.",
+          "character": "Citrusy, bright, aromatic"
+        },
+        "buckwheat": {
+          "description": "Dark, full-bodied honey with robust, almost molasses-like flavour.",
+          "character": "Dark, robust, malty, earthy"
+        },
+        "tupelo": {
+          "description": "Premium light honey that resists crystallization, with delicate flavour.",
+          "character": "Delicate, light, smooth"
+        },
+        "mesquite": {
+          "description": "Medium amber honey with distinctive southwestern character.",
+          "character": "Distinctive, slightly woody, smooth"
+        }
+      }
+    },
+    "fruits": {
+      "description": "Fruits add flavour, aroma, color, and acidity to ciders, meads, and specialty beers.",
+      "common_varieties": {
+        "apple": {
+          "description": "Primary fruit in cider production. Different varieties contribute varying levels of sweetness, acidity, and tannins.",
+          "character": "Ranges from sweet and mild to tart and complex"
+        },
+        "pear": {
+          "description": "Primary fruit in perry production. Generally more delicate than apple.",
+          "character": "Delicate, often sweeter than apple, less tannin"
+        },
+        "cherry": {
+          "description": "Popular addition to meads and ciders, adding tartness and color.",
+          "character": "Tart, distinctive flavour, red color contribution"
+        },
+        "elderberry": {
+          "description": "Dark berry that contributes deep color and complex flavour to meads.",
+          "character": "Dark, complex, slightly medicinal if over-used"
+        },
+        "blackberry": {
+          "description": "Common berry addition providing color and distinctive flavour.",
+          "character": "Dark, jammy, moderate tartness"
+        }
+      }
+    },
+    "processing_notes": {
+      "honey_handling": "Honey should be heated gently to avoid driving off volatile aromatics. Some meadmakers prefer no-heat methods to preserve delicate honey character.",
+      "fruit_processing": "Fruits can be added fresh, as juice, or as concentrates. Fresh fruit provides the most character but requires careful sanitation.",
+      "water_considerations": "Water chemistry significantly impacts final mead and cider character. Soft water is generally preferred for delicate styles."
+    }
+  }
+}

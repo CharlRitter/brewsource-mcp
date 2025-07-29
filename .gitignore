@@ -1,0 +1,197 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+gosec-report.json
+
+# Build output
+/dist/
+/build/
+
+# Compiled binaries
+app/bin/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+
+# JetBrains IDEs
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Vim
+*.swp
+*.swo
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Coverage reports
+coverage.txt
+coverage.html
+coverage.out
+*.cover
+
+# Profiling data
+*.prof
+*.pprof
+
+# Documentation build
+docs/_build/
+docs/site/
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes
+*.kubeconfig
+.kube/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Node.js (if using for docs or tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Redis dump
+dump.rdb
+
+# PostgreSQL
+*.sql~
+
+# Application specific
+config/local.yaml
+config/development.yaml
+config/production.yaml
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local development scripts
+scripts/local-*
+scripts/dev-*
+
+# Backup files
+*.bak
+*.backup
+
+# Cache directories
+.cache/
+cache/
+
+# Local data directories
+local/
+
+# Test fixtures that shouldn't be committed
+testdata/fixtures/local/
+
+# Performance test results
+bench.txt
+benchmarks/
+
+# Static analysis results
+staticcheck.out
+golangci-lint.out
+
+# Air live reload tool
+.air.toml
+tmp/
+
+# GoReleaser
+dist/
+goreleaser.yml
+
+# Delve debugger
+__debug_bin
+
+# Protocol buffer generated files
+*.pb.go
+
+# Wire generated files
+wire_gen.go
+
+# Mock files (if using mockgen)
+*_mock.go
+mocks/
+
+# Integration test configs
+test-config/
+integration-tests/config/
+
+# Local database dumps
+*.dump
+dumps/
+
+# Migration files with sensitive data
+migrations/*_local.sql
+migrations/*_dev.sql
+
+# Tilt
+.tilt-build/
+tilt_modules/
+
+# Kind
+kind-kubeconfig*
+
+# Local development tools cache
+.direnv/

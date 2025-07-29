@@ -1,0 +1,120 @@
+name: 🚀 MCP Integration Help
+description: Get help integrating with BrewSource MCP Server
+title: "[Integration]: "
+labels: ["question", "mcp-integration", "help-wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help integrating with BrewSource MCP Server? We're here to help! This template is for integration questions, not bug reports.
+
+  - type: dropdown
+    id: client-type
+    attributes:
+      label: MCP Client Type
+      description: What type of MCP client are you using?
+      options:
+        - Claude Desktop
+        - Custom MCP Client
+        - VS Code Extension
+        - Web Application
+        - Mobile App
+        - Command Line Tool
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connection-type
+    attributes:
+      label: Connection Type
+      description: How are you trying to connect to the MCP server?
+      options:
+        - WebSocket
+        - Stdio
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-trying-to-do
+    attributes:
+      label: What are you trying to accomplish?
+      description: Describe your integration goal and use case
+      placeholder: |
+        I'm trying to build a brewing assistant that can:
+        - Look up BJCP styles for recipe recommendations
+        - Search for local breweries
+        - Help with ingredient substitutions
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-approach
+    attributes:
+      label: Current Approach
+      description: What have you tried so far?
+      placeholder: |
+        - Connected to WebSocket endpoint
+        - Successfully called initialize
+        - Trying to call bjcp_lookup tool
+        - Getting error: ...
+
+  - type: textarea
+    id: code-sample
+    attributes:
+      label: Code Sample
+      description: Please share relevant code (remove any sensitive information)
+      render: javascript
+      placeholder: |
+        // Example MCP client code
+        const client = new MCPClient();
+        await client.connect('ws://localhost:8080/mcp');
+
+        const result = await client.callTool('bjcp_lookup', {
+          style_code: '21A'
+        });
+
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: Error Messages
+      description: Any error messages you're seeing?
+      render: shell
+
+  - type: dropdown
+    id: help-type
+    attributes:
+      label: Type of Help Needed
+      description: What kind of help are you looking for?
+      options:
+        - Connection Setup
+        - Tool Usage Examples
+        - Resource Access
+        - Error Troubleshooting
+        - Best Practices
+        - Performance Optimization
+        - Authentication/Security
+        - Client Library Recommendations
+        - Other
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: Please provide relevant environment information
+      placeholder: |
+        - OS: macOS 13.0
+        - Programming Language: JavaScript/Node.js
+        - MCP Library: @modelcontextprotocol/client
+        - BrewSource Server Version: latest
+        - Connection: Local / Remote
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](../CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
