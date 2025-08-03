@@ -7,6 +7,8 @@ import (
 
 	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
+	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 )
 
 type stubBreweryService struct {
@@ -25,7 +27,9 @@ func newTestHandlers() *ResourceHandlers {
 		Categories: []string{"IPA", "Lager"},
 		Metadata:   data.Metadata{Version: "2021"},
 	}
-	beerService := services.NewBeerService()
+	db := &sqlx.DB{}               // Use a mock or test DB connection in real tests
+	redisClient := &redis.Client{} // Use a mock or test Redis client
+	beerService := services.NewBeerService(db, redisClient)
 	breweryService := &services.BreweryService{}
 	return NewResourceHandlers(bjcpData, beerService, breweryService)
 }
@@ -167,7 +171,9 @@ func TestHandleBJCPResource_EmptyCategories(t *testing.T) {
 		Categories: []string{},
 		Metadata:   data.Metadata{Version: "2021"},
 	}
-	beerService := services.NewBeerService()
+	db := &sqlx.DB{}               // Use a mock or test DB connection in real tests
+	redisClient := &redis.Client{} // Use a mock or test Redis client
+	beerService := services.NewBeerService(db, redisClient)
 	breweryService := &services.BreweryService{}
 	h := NewResourceHandlers(bjcpData, beerService, breweryService)
 	res, err := h.HandleBJCPResource(context.Background(), "bjcp://styles")

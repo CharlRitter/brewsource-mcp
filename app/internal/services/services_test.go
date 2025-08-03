@@ -40,22 +40,22 @@ func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 	// Test that all expected fields exist on the BrewerySearchResult struct
 	brewery := &BrewerySearchResult{
 		ID:          1,
-		Name:        "Stone Brewing",
-		BreweryType: "regional",
-		Street:      "1999 Citracado Pkwy",
-		City:        "Escondido",
-		State:       "CA",
-		PostalCode:  "92029",
-		Country:     "United States",
-		Phone:       "760-294-7866",
-		Website:     "https://stonebrewing.com",
+		Name:        "Devil's Peak Brewing Company",
+		BreweryType: "micro",
+		Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
+		City:        "Woodstock",
+		State:       "Western Cape",
+		PostalCode:  "7925",
+		Country:     "South Africa",
+		Phone:       "+27 21 200 5818",
+		Website:     "https://www.devilspeak.beer",
 	}
 
-	if brewery.Name != "Stone Brewing" {
-		t.Errorf("Expected Name to be 'Stone Brewing', got %s", brewery.Name)
+	if brewery.Name != "Devil's Peak Brewing Company" {
+		t.Errorf("Expected Name to be 'Devil's Peak Brewing Company', got %s", brewery.Name)
 	}
 
-	if brewery.City != "Escondido" {
-		t.Errorf("Expected City to be 'Escondido', got %s", brewery.City)
+	if brewery.City != "Woodstock" {
+		t.Errorf("Expected City to be 'Woodstock', got %s", brewery.City)
 	}
 }

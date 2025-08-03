@@ -134,6 +134,20 @@ Once running, you'll have:
 - **Redis**: localhost:6379
 - **Tilt Dashboard**: http://localhost:10350
 
+## MCP Integration
+
+To add BrewSource MCP to your MCP configuration, include the following in your `mcp.json` or equivalent config:
+
+```json
+"brewsource": {
+  "type": "stdio",
+  "command": "node",
+  "args": ["/home/charl/workspace/brewsource-mcp/bridge/index.js"]
+}
+```
+
+This enables MCP clients to access BrewSource tools and resources via the MCP protocol.
+
 ### 1. Clone and Setup
 ```bash
 git clone <repository-url>

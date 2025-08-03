@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// Initialize services
-	beerService := services.NewBeerService()
+	beerService := services.NewBeerService(db, redisClient)
 	breweryService := services.NewBreweryService(db, redisClient)
 
 	// Initialize handlers
