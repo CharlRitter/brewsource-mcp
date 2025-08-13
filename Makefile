@@ -8,19 +8,19 @@ help:
 	@echo "=============================================="
 	@echo ""
 	@echo "Main commands:"
-	@echo "  setup       			Install required tools (Kind, Tilt, k9s)"
-	@echo "  up           		Start development environment (Kind + Tilt)"
-	@echo "  down        			Stop development environment"
-	@echo "  clean        		Clean up everything (delete cluster)"
-	@echo "  k9s          		Explore cluster with k9s (in brewsource-dev namespace)"
+	@echo "  setup             Install required tools (Kind, Tilt, k9s)"
+	@echo "  up                Start development environment (Kind + Tilt)"
+	@echo "  down              Stop development environment"
+	@echo "  clean             Clean up everything (delete cluster)"
+	@echo "  k9s               Explore cluster with k9s (in brewsource-dev namespace)"
 	@echo ""
 	@echo "Development:"
-	@echo "  build        		Build the application"
-	@echo "  test        			Run tests"
-	@echo "  format      			Format code"
-	@echo "  lint        			Run linter"
-	@echo "  lint-fix    			Run linter with auto-fix"
-	@echo "  security    			Run security scans"
+	@echo "  build             Build the application"
+	@echo "  test              Run tests"
+	@echo "  format            Format code"
+	@echo "  lint              Run linter"
+	@echo "  lint-fix          Run linter with auto-fix"
+	@echo "  security          Run security scans"
 	@echo ""
 
 # Kubernetes Development Environment
@@ -120,7 +120,10 @@ build:
 # Run all unit tests for the application
 test:
 	@echo "🧪 Running tests..."
-	@cd app && go test ./...
+	@go test -coverprofile=coverage.out ./app/...
+	@echo ""
+	@echo "📊 Coverage summary:"
+	@go tool cover -func=coverage.out
 	@echo "✅ Tests complete"
 
 # Format Go code using gofmt

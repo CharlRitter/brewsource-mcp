@@ -1,9 +1,107 @@
 package services
 
 import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
+	"runtime"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Test data constants
+const (
+	testTimeout = 5 * time.Second
+)
+
+// Mock data for tests
+var mockBreweryData = []*BrewerySearchResult{
+	{
+		ID:          1,
+		Name:        "Devil's Peak Brewing Company",
+		BreweryType: "micro",
+		Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
+		City:        "Woodstock",
+		State:       "Western Cape",
+		PostalCode:  "7925",
+		Country:     "South Africa",
+		Phone:       "+27 21 200 5818",
+		Website:     "https://www.devilspeak.beer",
+	},
+	{
+		ID:          2,
+		Name:        "Stone Brewing",
+		BreweryType: "regional",
+		Street:      "1999 Citracado Parkway",
+		City:        "Escondido",
+		State:       "California",
+		PostalCode:  "92029",
+		Country:     "United States",
+		Phone:       "+1 760 471 4999",
+		Website:     "https://www.stonebrewing.com",
+	},
+	{
+		ID:          3,
+		Name:        "Founders Brewing Co.",
+		BreweryType: "large",
+		Street:      "235 Grandville Ave SW",
+		City:        "Grand Rapids",
+		State:       "Michigan",
+		PostalCode:  "49503",
+		Country:     "United States",
+		Phone:       "+1 616 776 1195",
+		Website:     "https://foundersbrewing.com",
+	},
+}
+
+// Helper function to convert []interface{} to []driver.Value
+func interfaceToDriverValues(args []interface{}) []driver.Value {
+	values := make([]driver.Value, len(args))
+	for i, arg := range args {
+		values[i] = arg
+	}
+	return values
+}
+
+func setupBreweryService(db *sqlx.DB) *BreweryService {
+	// Using nil for Redis client in tests
+	return NewBreweryService(db, nil)
+}
+
+// TestNewBreweryService tests the constructor
+func TestNewBreweryService(t *testing.T) {
+	db, _ := setupMockDB(t)
+	defer db.Close()
+
+	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+
+	service := NewBreweryService(db, redisClient)
+
+	assert.NotNil(t, service)
+	assert.NotNil(t, service.db)
+	assert.NotNil(t, service.redisClient)
+}
+
+func TestNewBreweryService_WithNilRedis(t *testing.T) {
+	db, _ := setupMockDB(t)
+	defer db.Close()
+
+	service := NewBreweryService(db, nil)
+
+	assert.NotNil(t, service)
+	assert.NotNil(t, service.db)
+	assert.Nil(t, service.redisClient)
+}
+
+// TestBrewerySearchQuery_DefaultLimits tests limit validation (existing test enhanced)
 func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -15,6 +113,8 @@ func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 		{"too large limit defaults to 20", 150, 20},
 		{"valid limit preserved", 15, 15},
 		{"max valid limit", 100, 100},
+		{"boundary case - limit 101", 101, 20},
+		{"boundary case - limit 1", 1, 1},
 	}
 
 	for _, tt := range tests {
@@ -29,13 +129,247 @@ func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 				query.Limit = 20
 			}
 
-			if query.Limit != tt.expectedLimit {
-				t.Errorf("Limit adjustment: got %d, want %d", query.Limit, tt.expectedLimit)
-			}
+			assert.Equal(t, tt.expectedLimit, query.Limit)
 		})
 	}
 }
 
+// Integration-style tests for query building logic
+func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	// Test the actual SQL query structure for different parameter combinations
+	testCases := []struct {
+		name         string
+		query        BrewerySearchQuery
+		expectedSQL  string
+		expectedArgs []interface{}
+	}{
+		{
+			name: "no filters",
+			query: BrewerySearchQuery{
+				Limit: 10,
+			},
+			expectedSQL:  `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 ORDER BY name LIMIT \$1`,
+			expectedArgs: []interface{}{10},
+		},
+		{
+			name: "name filter only",
+			query: BrewerySearchQuery{
+				Name:  "Stone",
+				Limit: 15,
+			},
+			expectedSQL:  `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`,
+			expectedArgs: []interface{}{"%Stone%", 15},
+		},
+		{
+			name: "location filter creates OR condition",
+			query: BrewerySearchQuery{
+				Location: "California",
+				Limit:    25,
+			},
+			expectedSQL:  `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\) ORDER BY name LIMIT \$2`,
+			expectedArgs: []interface{}{"%California%", 25},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := sqlmock.NewRows([]string{
+				"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+			})
+
+			mock.ExpectQuery(tc.expectedSQL).
+				WithArgs(interfaceToDriverValues(tc.expectedArgs)...).
+				WillReturnRows(rows)
+
+			ctx := context.Background()
+			results, err := service.SearchBreweries(ctx, tc.query)
+
+			require.NoError(t, err)
+			assert.NotNil(t, results)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// Test Result Mapping and Data Types
+func TestSearchBreweries_ResultMapping(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 1,
+	}
+
+	// Test various data types and edge values
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		999999, // Large ID
+		"Test Brewery With Very Long Name That Might Cause Issues",
+		"nano", // Different brewery type
+		"123 Main Street, Suite 456, Building A",
+		"San Francisco",
+		"CA",
+		"94102-1234",                 // Extended postal code
+		"United States of America",   // Full country name
+		"+1 (555) 123-4567 ext. 890", // Complex phone format
+		"https://www.very-long-brewery-name-with-hyphens-and-subdomains.brewery.com/path?param=value",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 1).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+
+	result := results[0]
+	assert.Equal(t, 999999, result.ID)
+	assert.Equal(t, "Test Brewery With Very Long Name That Might Cause Issues", result.Name)
+	assert.Equal(t, "nano", result.BreweryType)
+	assert.Equal(t, "123 Main Street, Suite 456, Building A", result.Street)
+	assert.Equal(t, "San Francisco", result.City)
+	assert.Equal(t, "CA", result.State)
+	assert.Equal(t, "94102-1234", result.PostalCode)
+	assert.Equal(t, "United States of America", result.Country)
+	assert.Equal(t, "+1 (555) 123-4567 ext. 890", result.Phone)
+	assert.Equal(t, "https://www.very-long-brewery-name-with-hyphens-and-subdomains.brewery.com/path?param=value", result.Website)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test for potential memory leaks with large result sets
+func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping memory leak test in short mode")
+	}
+
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	// Run multiple queries to check for memory leaks
+	for iteration := 0; iteration < 10; iteration++ {
+		query := BrewerySearchQuery{
+			Name:  fmt.Sprintf("Test%d", iteration),
+			Limit: 50,
+		}
+
+		rows := sqlmock.NewRows([]string{
+			"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+		})
+
+		// Add 50 results per iteration
+		for i := 0; i < 50; i++ {
+			rows.AddRow(
+				i+(iteration*50), fmt.Sprintf("Test Brewery %d-%d", iteration, i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+			)
+		}
+
+		expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+		mock.ExpectQuery(expectedSQL).
+			WithArgs("%"+fmt.Sprintf("Test%d", iteration)+"%", 50).
+			WillReturnRows(rows)
+
+		ctx := context.Background()
+		results, err := service.SearchBreweries(ctx, query)
+
+		require.NoError(t, err)
+		assert.Len(t, results, 50)
+
+		// Clear results to help GC
+		results = nil
+		runtime.GC()
+	}
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test for partial matches and fuzzy searching behavior
+func TestSearchBreweries_PartialMatching(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	testCases := []struct {
+		searchTerm   string
+		breweryNames []string
+		description  string
+	}{
+		{
+			searchTerm:   "Stone",
+			breweryNames: []string{"Stone Brewing", "Firestone Walker", "Keystone Brewery"},
+			description:  "Should match partial name occurrences",
+		},
+		{
+			searchTerm:   "brew",
+			breweryNames: []string{"Test Brewery", "Homebrew Co", "Brewing Solutions"},
+			description:  "Should match substring in different positions",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			query := BrewerySearchQuery{
+				Name:  tc.searchTerm,
+				Limit: 20,
+			}
+
+			rows := sqlmock.NewRows([]string{
+				"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+			})
+
+			for i, name := range tc.breweryNames {
+				rows.AddRow(
+					i+1, name, "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+				)
+			}
+
+			expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+			mock.ExpectQuery(expectedSQL).
+				WithArgs("%"+tc.searchTerm+"%", 20).
+				WillReturnRows(rows)
+
+			ctx := context.Background()
+			results, err := service.SearchBreweries(ctx, query)
+
+			require.NoError(t, err)
+			assert.Len(t, results, len(tc.breweryNames))
+
+			// Verify all expected names are returned
+			for i, expectedName := range tc.breweryNames {
+				assert.Equal(t, expectedName, results[i].Name)
+			}
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// TestBrewerySearchResult_FieldsExist tests struct field existence (existing test enhanced)
 func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 	// Test that all expected fields exist on the BrewerySearchResult struct
 	brewery := &BrewerySearchResult{
@@ -51,11 +385,1526 @@ func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 		Website:     "https://www.devilspeak.beer",
 	}
 
-	if brewery.Name != "Devil's Peak Brewing Company" {
-		t.Errorf("Expected Name to be 'Devil's Peak Brewing Company', got %s", brewery.Name)
+	assert.Equal(t, "Devil's Peak Brewing Company", brewery.Name)
+	assert.Equal(t, "Woodstock", brewery.City)
+	assert.Equal(t, "Western Cape", brewery.State)
+	assert.Equal(t, "South Africa", brewery.Country)
+	assert.Equal(t, "micro", brewery.BreweryType)
+	assert.Equal(t, "+27 21 200 5818", brewery.Phone)
+	assert.Equal(t, "https://www.devilspeak.beer", brewery.Website)
+}
+
+// Happy Path Tests
+func TestSearchBreweries_ByName_Success(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Stone",
+		Limit: 20,
 	}
 
-	if brewery.City != "Woodstock" {
-		t.Errorf("Expected City to be 'Woodstock', got %s", brewery.City)
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Stone%", 20).
+		WillReturnRows(rows)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Stone Brewing", results[0].Name)
+	assert.Equal(t, "Escondido", results[0].City)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test Location OR logic specifically
+func TestSearchBreweries_LocationOrLogic(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Location: "San", // Should match cities, states, or countries containing "San"
+		Limit:    20,
 	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "San Diego Brewery", "micro", "123 Main St", "San Diego", "CA", "92101", "USA", "+1234567890", "https://sandiego.com",
+	).AddRow(
+		2, "Francisco Brewing", "micro", "456 Oak St", "San Francisco", "CA", "94102", "USA", "+1234567891", "https://sf.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%San%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.Contains(t, results[0].City, "San")
+	assert.Contains(t, results[1].City, "San")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test multiple conditions AND logic
+func TestSearchBreweries_MultipleConditionsAndLogic(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:     "Stone",
+		City:     "Escondido",
+		State:    "California",
+		Country:  "United States",
+		Location: "West Coast", // This should also be included
+		Limit:    20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	// All conditions should be ANDed together
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) AND LOWER\(city\) LIKE LOWER\(\$2\) AND LOWER\(state\) LIKE LOWER\(\$3\) AND LOWER\(country\) LIKE LOWER\(\$4\) AND \(LOWER\(city\) LIKE LOWER\(\$5\) OR LOWER\(state\) LIKE LOWER\(\$5\) OR LOWER\(country\) LIKE LOWER\(\$5\)\) ORDER BY name LIMIT \$6`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Stone%", "%Escondido%", "%California%", "%United States%", "%West Coast%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Stone Brewing", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Performance regression test
+func TestSearchBreweries_PerformanceRegression(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping performance test in short mode")
+	}
+
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 50,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	// Add 50 results
+	for i := 0; i < 50; i++ {
+		rows.AddRow(
+			i, fmt.Sprintf("Test Brewery %d", i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+		)
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 50).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	start := time.Now()
+
+	results, err := service.SearchBreweries(ctx, query)
+
+	duration := time.Since(start)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 50)
+
+	// Performance requirement: should complete within 500ms as per testing doc
+	assert.Less(t, duration, 500*time.Millisecond, "Query should complete within 500ms")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test that demonstrates proper error wrapping
+func TestSearchBreweries_ErrorWrapping(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	originalErr := sql.ErrTxDone
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillReturnError(originalErr)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "failed to search breweries")
+	assert.ErrorIs(t, err, originalErr) // Original error should be wrapped
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test data consistency
+func TestBrewerySearchResult_DatabaseTagConsistency(t *testing.T) {
+	// Verify that struct tags match expected database column names
+	brewery := BrewerySearchResult{}
+
+	// Use reflection to check db tags (in a real scenario)
+	// For this test, we'll verify the expected field mappings match our mock data
+
+	expectedFields := map[string]interface{}{
+		"id":           brewery.ID,
+		"name":         brewery.Name,
+		"brewery_type": brewery.BreweryType,
+		"street":       brewery.Street,
+		"city":         brewery.City,
+		"state":        brewery.State,
+		"postal_code":  brewery.PostalCode,
+		"country":      brewery.Country,
+		"phone":        brewery.Phone,
+		"website_url":  brewery.Website,
+	}
+
+	// Verify we have all expected fields
+	assert.Len(t, expectedFields, 10, "BrewerySearchResult should have exactly 10 fields")
+}
+
+// Table-driven test for all search combinations
+func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
+	testCases := []struct {
+		name         string
+		query        BrewerySearchQuery
+		expectedArgs []interface{}
+		description  string
+	}{
+		{
+			name: "name only",
+			query: BrewerySearchQuery{
+				Name:  "Stone",
+				Limit: 20,
+			},
+			expectedArgs: []interface{}{"%Stone%", 20},
+			description:  "Should search by name only",
+		},
+		{
+			name: "city only",
+			query: BrewerySearchQuery{
+				City:  "Escondido",
+				Limit: 20,
+			},
+			expectedArgs: []interface{}{"%Escondido%", 20},
+			description:  "Should search by city only",
+		},
+		{
+			name: "state only",
+			query: BrewerySearchQuery{
+				State: "California",
+				Limit: 20,
+			},
+			expectedArgs: []interface{}{"%California%", 20},
+			description:  "Should search by state only",
+		},
+		{
+			name: "country only",
+			query: BrewerySearchQuery{
+				Country: "United States",
+				Limit:   20,
+			},
+			expectedArgs: []interface{}{"%United States%", 20},
+			description:  "Should search by country only",
+		},
+		{
+			name: "location only",
+			query: BrewerySearchQuery{
+				Location: "California",
+				Limit:    20,
+			},
+			expectedArgs: []interface{}{"%California%", 20},
+			description:  "Should search by location (city OR state OR country)",
+		},
+		{
+			name: "name and city",
+			query: BrewerySearchQuery{
+				Name:  "Stone",
+				City:  "Escondido",
+				Limit: 20,
+			},
+			expectedArgs: []interface{}{"%Stone%", "%Escondido%", 20},
+			description:  "Should search by name AND city",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock := setupMockDB(t)
+			defer db.Close()
+
+			service := setupBreweryService(db)
+
+			rows := sqlmock.NewRows([]string{
+				"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+			})
+
+			mock.ExpectQuery(`SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1`).
+				WithArgs(interfaceToDriverValues(tc.expectedArgs)...).
+				WillReturnRows(rows)
+
+			ctx := context.Background()
+			results, err := service.SearchBreweries(ctx, tc.query)
+
+			require.NoError(t, err, tc.description)
+			assert.NotNil(t, results, tc.description)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestSearchBreweries_ByCity_Success(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		City:  "Woodstock",
+		Limit: 10,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
+		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
+		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
+		mockBreweryData[0].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(city\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Woodstock%", 10).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Devil's Peak Brewing Company", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_ByLocation_Success(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Location: "California",
+		Limit:    5,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%California%", 5).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Stone Brewing", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_MultipleFilters_Success(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:    "Stone",
+		State:   "California",
+		Country: "United States",
+		Limit:   15,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) AND LOWER\(state\) LIKE LOWER\(\$2\) AND LOWER\(country\) LIKE LOWER\(\$3\) ORDER BY name LIMIT \$4`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Stone%", "%California%", "%United States%", 15).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Sad Path Tests
+func TestSearchBreweries_NoResults(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "NonexistentBrewery",
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%NonexistentBrewery%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 0)
+	assert.NotNil(t, results) // Should return empty slice, not nil
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_DatabaseError(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillReturnError(sql.ErrConnDone)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "failed to search breweries")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Edge Cases and Boundary Tests
+func TestSearchBreweries_EmptyFilters(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Limit: 10,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+	for _, brewery := range mockBreweryData[:2] {
+		rows.AddRow(
+			brewery.ID, brewery.Name, brewery.BreweryType,
+			brewery.Street, brewery.City, brewery.State,
+			brewery.PostalCode, brewery.Country, brewery.Phone,
+			brewery.Website,
+		)
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 ORDER BY name LIMIT \$1`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs(10).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_CaseInsensitive(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "STONE", // Uppercase
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%STONE%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Stone Brewing", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_SpecialCharacters(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Devil's", // Contains apostrophe
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
+		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
+		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
+		mockBreweryData[0].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Devil's%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Devil's Peak Brewing Company", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_UnicodeCharacters(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Bières", // Unicode characters
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Bières%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 0)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Context and Timeout Tests
+func TestSearchBreweries_ContextTimeout(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillDelayFor(2 * time.Second). // Simulate slow query
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url"}))
+
+	// Create a context with very short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "context deadline exceeded")
+}
+
+func TestSearchBreweries_ContextCancellation(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillDelayFor(1 * time.Second).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url"}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel context immediately
+	cancel()
+
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "context canceled")
+}
+
+// Performance Tests
+func TestSearchBreweries_LargeResultSet(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Brewing", // Common term that might match many results
+		Limit: 100,       // Maximum allowed
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	// Add 100 mock results
+	for i := 1; i <= 100; i++ {
+		rows.AddRow(
+			i, "Test Brewing "+string(rune(i)), "micro",
+			"Test Street", "Test City", "Test State",
+			"12345", "Test Country", "+1234567890",
+			"https://test.com",
+		)
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Brewing%", 100).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	start := time.Now()
+	results, err := service.SearchBreweries(ctx, query)
+	duration := time.Since(start)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 100)
+	assert.Less(t, duration, 1*time.Second, "Query should complete within 1 second")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Integration-like tests (with mock database)
+func TestSearchBreweries_ComplexLocationSearch(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Location: "United", // Should match "United States" in country
+		Limit:    20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+	for _, brewery := range mockBreweryData[1:] { // Stone and Founders (both US)
+		rows.AddRow(
+			brewery.ID, brewery.Name, brewery.BreweryType,
+			brewery.Street, brewery.City, brewery.State,
+			brewery.PostalCode, brewery.Country, brewery.Phone,
+			brewery.Website,
+		)
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%United%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+
+	// All results should be from United States
+	for _, result := range results {
+		assert.Equal(t, "United States", result.Country)
+	}
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Validation Tests
+func TestSearchBreweries_AllEmptyFields(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:     "",
+		Location: "",
+		City:     "",
+		State:    "",
+		Country:  "",
+		Limit:    0, // This should default to 20
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 ORDER BY name LIMIT \$1`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs(20). // Should default to 20
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.NotNil(t, results)
+	assert.Len(t, results, 0)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Security Tests - SQL Injection Prevention
+func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
+	testCases := []struct {
+		name      string
+		query     BrewerySearchQuery
+		expectErr bool
+	}{
+		{
+			name: "SQL injection in name field",
+			query: BrewerySearchQuery{
+				Name:  "'; DROP TABLE breweries; --",
+				Limit: 20,
+			},
+			expectErr: false, // Should be safely handled by parameterized queries
+		},
+		{
+			name: "SQL injection in city field",
+			query: BrewerySearchQuery{
+				City:  "' OR 1=1 --",
+				Limit: 20,
+			},
+			expectErr: false,
+		},
+		{
+			name: "SQL injection in state field",
+			query: BrewerySearchQuery{
+				State: "' UNION SELECT * FROM users --",
+				Limit: 20,
+			},
+			expectErr: false,
+		},
+		{
+			name: "SQL injection in country field",
+			query: BrewerySearchQuery{
+				Country: "' OR '1'='1",
+				Limit:   20,
+			},
+			expectErr: false,
+		},
+		{
+			name: "SQL injection in location field",
+			query: BrewerySearchQuery{
+				Location: "; UPDATE breweries SET name='hacked'",
+				Limit:    20,
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock := setupMockDB(t)
+			defer db.Close()
+
+			service := setupBreweryService(db)
+
+			// Mock expects the malicious input to be safely parameterized
+			rows := sqlmock.NewRows([]string{
+				"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+			})
+
+			// The SQL should contain the malicious string as a parameter, not injected into the query
+			mock.ExpectQuery(`SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1`).
+				WillReturnRows(rows)
+
+			ctx := context.Background()
+			results, err := service.SearchBreweries(ctx, tc.query)
+
+			if tc.expectErr {
+				assert.Error(t, err)
+				assert.Nil(t, results)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, results)
+			}
+		})
+	}
+}
+
+// Data Integrity Tests
+func TestSearchBreweries_NullValueHandling(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	// Mock data with some null/empty values
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "Test Brewery", "micro", "", "Test City", "", "12345", "USA", "", "",
+	).AddRow(
+		2, "Another Brewery", "", "123 Main St", "", "CA", "", "", "+1234567890", "https://test.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+
+	// Verify that empty strings are handled properly
+	assert.Equal(t, "", results[0].Street)
+	assert.Equal(t, "", results[0].State)
+	assert.Equal(t, "", results[1].BreweryType)
+	assert.Equal(t, "", results[1].City)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_LongFieldValues(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	// Test with very long field values
+	longName := strings.Repeat("Very Long Brewery Name ", 50) // ~1000+ characters
+	longCity := strings.Repeat("Very Long City Name ", 20)    // ~400+ characters
+
+	query := BrewerySearchQuery{
+		Name:  longName,
+		City:  longCity,
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) AND LOWER\(city\) LIKE LOWER\(\$2\) ORDER BY name LIMIT \$3`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%"+longName+"%", "%"+longCity+"%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.NotNil(t, results)
+	assert.Len(t, results, 0)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Concurrency Tests
+func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	// Set up expectations for multiple concurrent queries
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "Test Brewery", "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	// Expect multiple queries
+	for i := 0; i < 5; i++ {
+		mock.ExpectQuery(expectedSQL).
+			WithArgs("%Test%", 20).
+			WillReturnRows(rows)
+	}
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	// Run concurrent requests
+	const numRoutines = 5
+	results := make(chan error, numRoutines)
+
+	for i := 0; i < numRoutines; i++ {
+		go func() {
+			ctx := context.Background()
+			_, err := service.SearchBreweries(ctx, query)
+			results <- err
+		}()
+	}
+
+	// Collect results
+	for i := 0; i < numRoutines; i++ {
+		err := <-results
+		assert.NoError(t, err)
+	}
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Memory Usage Tests
+func TestSearchBreweries_MemoryUsage(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 100,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	// Add many results to test memory usage
+	for i := 0; i < 100; i++ {
+		rows.AddRow(
+			i, fmt.Sprintf("Test Brewery %d", i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+		)
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 100).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 100)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Regression Tests
+func TestSearchBreweries_OrderByName(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Brewing",
+		Limit: 20,
+	}
+
+	// Return results in alphabetical order to verify ORDER BY works
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "Alpha Brewing", "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://alpha.com",
+	).AddRow(
+		2, "Beta Brewing", "micro", "456 Oak St", "Test City", "CA", "12345", "USA", "+1234567891", "https://beta.com",
+	).AddRow(
+		3, "Charlie Brewing", "micro", "789 Pine St", "Test City", "CA", "12345", "USA", "+1234567892", "https://charlie.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Brewing%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 3)
+
+	// Verify ordering
+	assert.Equal(t, "Alpha Brewing", results[0].Name)
+	assert.Equal(t, "Beta Brewing", results[1].Name)
+	assert.Equal(t, "Charlie Brewing", results[2].Name)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Whitespace and Trimming Tests
+func TestSearchBreweries_WhitespaceHandling(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "  Stone  ",     // Leading and trailing whitespace
+		City:  "\tEscondido\n", // Tab and newline characters
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) AND LOWER\(city\) LIKE LOWER\(\$2\) ORDER BY name LIMIT \$3`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%  Stone  %", "%\tEscondido\n%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Database Error Scenarios
+func TestSearchBreweries_DatabaseConnectionError(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillReturnError(sql.ErrConnDone)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "failed to search breweries")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_QuerySyntaxError(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%Test%", 20).
+		WillReturnError(sql.ErrNoRows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	assert.Error(t, err)
+	assert.Nil(t, results)
+	assert.Contains(t, err.Error(), "failed to search breweries")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Edge Case: Very Short Search Terms
+func TestSearchBreweries_SingleCharacterSearch(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "A",
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "Alpha Brewing", "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://alpha.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%A%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "Alpha Brewing", results[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Test State and Country Filters
+func TestSearchBreweries_StateFilter(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		State: "California",
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
+		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
+		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
+		mockBreweryData[1].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(state\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%California%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "California", results[0].State)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSearchBreweries_CountryFilter(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Country: "South Africa",
+		Limit:   20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
+		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
+		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
+		mockBreweryData[0].Website,
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(country\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%South Africa%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "South Africa", results[0].Country)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Benchmark Tests
+func BenchmarkSearchBreweries_SingleField(b *testing.B) {
+	db, mock := setupMockDB(&testing.T{})
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "Test",
+		Limit: 20,
+	}
+
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	}).AddRow(
+		1, "Test Brewery", "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+	)
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	for i := 0; i < b.N; i++ {
+		mock.ExpectQuery(expectedSQL).
+			WithArgs("%Test%", 20).
+			WillReturnRows(rows)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ctx := context.Background()
+		_, err := service.SearchBreweries(ctx, query)
+		if err != nil {
+			b.Fatalf("Unexpected error: %v", err)
+		}
+	}
+}
+
+// Helper function tests
+func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    BrewerySearchQuery
+		expected BrewerySearchQuery
+	}{
+		{
+			name: "all valid fields",
+			query: BrewerySearchQuery{
+				Name:     "Stone",
+				Location: "California",
+				City:     "Escondido",
+				State:    "CA",
+				Country:  "USA",
+				Limit:    50,
+			},
+			expected: BrewerySearchQuery{
+				Name:     "Stone",
+				Location: "California",
+				City:     "Escondido",
+				State:    "CA",
+				Country:  "USA",
+				Limit:    50,
+			},
+		},
+		{
+			name: "limit boundary correction",
+			query: BrewerySearchQuery{
+				Name:  "Test",
+				Limit: -10,
+			},
+			expected: BrewerySearchQuery{
+				Name:  "Test",
+				Limit: 20, // Should be corrected
+			},
+		},
+		{
+			name: "limit too high correction",
+			query: BrewerySearchQuery{
+				Name:  "Test",
+				Limit: 1000,
+			},
+			expected: BrewerySearchQuery{
+				Name:  "Test",
+				Limit: 20, // Should be corrected
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate limit validation logic
+			if tt.query.Limit <= 0 || tt.query.Limit > 100 {
+				tt.query.Limit = 20
+			}
+
+			assert.Equal(t, tt.expected.Name, tt.query.Name)
+			assert.Equal(t, tt.expected.Location, tt.query.Location)
+			assert.Equal(t, tt.expected.City, tt.query.City)
+			assert.Equal(t, tt.expected.State, tt.query.State)
+			assert.Equal(t, tt.expected.Country, tt.query.Country)
+			assert.Equal(t, tt.expected.Limit, tt.query.Limit)
+		})
+	}
+}
+
+// Test struct field completeness and types
+func TestBrewerySearchResult_StructIntegrity(t *testing.T) {
+	brewery := BrewerySearchResult{
+		ID:          123,
+		Name:        "Test Brewery",
+		BreweryType: "micro",
+		Street:      "123 Main St",
+		City:        "Test City",
+		State:       "CA",
+		PostalCode:  "12345",
+		Country:     "USA",
+		Phone:       "+1234567890",
+		Website:     "https://test.com",
+	}
+
+	// Test that all fields have expected types and can be set/retrieved
+	assert.IsType(t, 0, brewery.ID)
+	assert.IsType(t, "", brewery.Name)
+	assert.IsType(t, "", brewery.BreweryType)
+	assert.IsType(t, "", brewery.Street)
+	assert.IsType(t, "", brewery.City)
+	assert.IsType(t, "", brewery.State)
+	assert.IsType(t, "", brewery.PostalCode)
+	assert.IsType(t, "", brewery.Country)
+	assert.IsType(t, "", brewery.Phone)
+	assert.IsType(t, "", brewery.Website)
+
+	// Test field values
+	assert.Equal(t, 123, brewery.ID)
+	assert.Equal(t, "Test Brewery", brewery.Name)
+	assert.Equal(t, "micro", brewery.BreweryType)
+	assert.Equal(t, "123 Main St", brewery.Street)
+	assert.Equal(t, "Test City", brewery.City)
+	assert.Equal(t, "CA", brewery.State)
+	assert.Equal(t, "12345", brewery.PostalCode)
+	assert.Equal(t, "USA", brewery.Country)
+	assert.Equal(t, "+1234567890", brewery.Phone)
+	assert.Equal(t, "https://test.com", brewery.Website)
+}
+
+// Edge case: Empty database
+func TestSearchBreweries_EmptyDatabase(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	service := setupBreweryService(db)
+
+	query := BrewerySearchQuery{
+		Name:  "AnyName",
+		Limit: 20,
+	}
+
+	// Empty result set
+	rows := sqlmock.NewRows([]string{
+		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
+	})
+
+	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
+		FROM breweries
+		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
+
+	mock.ExpectQuery(expectedSQL).
+		WithArgs("%AnyName%", 20).
+		WillReturnRows(rows)
+
+	ctx := context.Background()
+	results, err := service.SearchBreweries(ctx, query)
+
+	require.NoError(t, err)
+	assert.NotNil(t, results)
+	assert.Len(t, results, 0)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -68,6 +69,37 @@ func TestBJCPLookupTool_Definition(t *testing.T) {
 	if !contains(bjcpTool.Description, "BJCP") {
 		t.Error("Expected description to contain 'BJCP'")
 	}
+
+	// Validate input schema
+	schema, ok := bjcpTool.InputSchema.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected input schema to be a map")
+	}
+
+	// Check style_code parameter definition
+	props, ok := schema["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected schema properties to be a map")
+	}
+
+	styleCode, ok := props["style_code"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected style_code definition to be a map")
+	}
+
+	if styleCode["type"] != "string" {
+		t.Error("Expected style_code type to be string")
+	}
+
+	// Check style_name parameter definition
+	styleName, ok := props["style_name"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected style_name definition to be a map")
+	}
+
+	if styleName["type"] != "string" {
+		t.Error("Expected style_name type to be string")
+	}
 }
 
 func TestSearchBeersTool_Definition(t *testing.T) {
@@ -93,6 +125,133 @@ func TestSearchBeersTool_Definition(t *testing.T) {
 	if !contains(beerTool.Description, "beer") {
 		t.Error("Expected description to contain 'beer'")
 	}
+
+	// Validate input schema
+	schema, ok := beerTool.InputSchema.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected input schema to be a map")
+	}
+
+	props, ok := schema["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected schema properties to be a map")
+	}
+
+	// Check required parameters
+	requiredParams := []string{"name", "style", "brewery", "location", "limit"}
+	for _, param := range requiredParams {
+		if _, ok := props[param]; !ok {
+			t.Errorf("Missing required parameter: %s", param)
+		}
+	}
+
+	// Validate limit parameter type and constraints
+	limit, ok := props["limit"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected limit definition to be a map")
+	}
+	if limit["type"] != "integer" {
+		t.Error("Expected limit type to be integer")
+	}
+}
+
+func TestSearchBeers_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		wantErr     bool
+		errCode     int
+		errContains string
+	}{
+		{
+			name:        "empty parameters",
+			args:        map[string]interface{}{},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "at least one search parameter is required",
+		},
+		{
+			name: "all empty strings",
+			args: map[string]interface{}{
+				"name":     "",
+				"style":    "",
+				"brewery":  "",
+				"location": "",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "at least one search parameter is required",
+		},
+		{
+			name: "invalid limit type",
+			args: map[string]interface{}{
+				"name":  "Test Beer",
+				"limit": "invalid",
+			},
+			wantErr: false, // Should use default limit
+		},
+		{
+			name: "negative limit",
+			args: map[string]interface{}{
+				"name":  "Test Beer",
+				"limit": -1,
+			},
+			wantErr: false, // Should use default limit
+		},
+		{
+			name: "excessive limit",
+			args: map[string]interface{}{
+				"name":  "Test Beer",
+				"limit": 1000,
+			},
+			wantErr: false, // Should cap at max limit (100)
+		},
+		{
+			name: "valid search with all parameters",
+			args: map[string]interface{}{
+				"name":     "IPA",
+				"style":    "India Pale Ale",
+				"brewery":  "Test Brewery",
+				"location": "Test City",
+				"limit":    10,
+			},
+			wantErr: false,
+		},
+	}
+
+	handlers := &ToolHandlers{}
+	ctx := context.Background()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := handlers.SearchBeers(ctx, tt.args)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Expected error but got none")
+					return
+				}
+
+				mcpErr, ok := err.(*mcp.Error)
+				if !ok {
+					t.Errorf("Expected *mcp.Error but got %T", err)
+					return
+				}
+
+				if mcpErr.Code != tt.errCode {
+					t.Errorf("Expected error code %d but got %d", tt.errCode, mcpErr.Code)
+				}
+
+				if !contains(mcpErr.Message, tt.errContains) {
+					t.Errorf("Expected error message containing %q but got %q", tt.errContains, mcpErr.Message)
+				}
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			} else if result == nil {
+				t.Error("Expected non-nil result")
+			}
+		})
+	}
 }
 
 func TestFindBreweriesTool_Definition(t *testing.T) {
@@ -117,6 +276,216 @@ func TestFindBreweriesTool_Definition(t *testing.T) {
 
 	if !contains(breweryTool.Description, "brew") {
 		t.Error("Expected description to contain 'brew'")
+	}
+
+	// Validate input schema
+	schema, ok := breweryTool.InputSchema.(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected input schema to be a map")
+	}
+
+	props, ok := schema["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected schema properties to be a map")
+	}
+
+	// Check all location-related parameters
+	locationParams := []string{"name", "location", "city", "state", "country", "limit"}
+	for _, param := range locationParams {
+		if _, ok := props[param]; !ok {
+			t.Errorf("Missing parameter: %s", param)
+		}
+	}
+}
+
+func TestFindBreweries_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		wantErr     bool
+		errCode     int
+		errContains string
+	}{
+		{
+			name:        "empty parameters",
+			args:        map[string]interface{}{},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "at least one search parameter is required",
+		},
+		{
+			name: "all empty strings",
+			args: map[string]interface{}{
+				"name":     "",
+				"location": "",
+				"city":     "",
+				"state":    "",
+				"country":  "",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "at least one search parameter is required",
+		},
+		{
+			name: "invalid limit type",
+			args: map[string]interface{}{
+				"name":  "Test Brewery",
+				"limit": "invalid",
+			},
+			wantErr: false, // Should use default limit
+		},
+		{
+			name: "search by city only",
+			args: map[string]interface{}{
+				"city": "Portland",
+			},
+			wantErr: false,
+		},
+		{
+			name: "search by state only",
+			args: map[string]interface{}{
+				"state": "Oregon",
+			},
+			wantErr: false,
+		},
+		{
+			name: "search by country only",
+			args: map[string]interface{}{
+				"country": "United States",
+			},
+			wantErr: false,
+		},
+		{
+			name: "combined location search",
+			args: map[string]interface{}{
+				"city":    "Portland",
+				"state":   "Oregon",
+				"country": "United States",
+			},
+			wantErr: false,
+		},
+		{
+			name: "excessive limit",
+			args: map[string]interface{}{
+				"name":  "Test Brewery",
+				"limit": 1000,
+			},
+			wantErr: false, // Should cap at max limit (100)
+		},
+	}
+
+	handlers := &ToolHandlers{}
+	ctx := context.Background()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := handlers.FindBreweries(ctx, tt.args)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Expected error but got none")
+					return
+				}
+
+				mcpErr, ok := err.(*mcp.Error)
+				if !ok {
+					t.Errorf("Expected *mcp.Error but got %T", err)
+					return
+				}
+
+				if mcpErr.Code != tt.errCode {
+					t.Errorf("Expected error code %d but got %d", tt.errCode, mcpErr.Code)
+				}
+
+				if !contains(mcpErr.Message, tt.errContains) {
+					t.Errorf("Expected error message containing %q but got %q", tt.errContains, mcpErr.Message)
+				}
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			} else if result == nil {
+				t.Error("Expected non-nil result")
+			}
+		})
+	}
+}
+
+func TestToolResponse_Formatting(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  []mcp.ToolContent
+		validate func(t *testing.T, content string)
+	}{
+		{
+			name: "BJCP style info formatting",
+			content: []mcp.ToolContent{{
+				Type: "text",
+				Text: "**BJCP Style 21A: American IPA**\n\n**Category:** American IPA",
+			}},
+			validate: func(t *testing.T, content string) {
+				if !strings.Contains(content, "**BJCP Style") {
+					t.Error("Missing style header formatting")
+				}
+				if !strings.Contains(content, "**Category:**") {
+					t.Error("Missing category section")
+				}
+			},
+		},
+		{
+			name: "Beer search results formatting",
+			content: []mcp.ToolContent{{
+				Type: "text",
+				Text: "**Found 2 beer(s):**\n\n**1. Test Beer**\n- **Brewery:** Test Brewery",
+			}},
+			validate: func(t *testing.T, content string) {
+				if !strings.Contains(content, "**Found") {
+					t.Error("Missing results count")
+				}
+				if !strings.Contains(content, "**Brewery:**") {
+					t.Error("Missing brewery information")
+				}
+			},
+		},
+		{
+			name: "Brewery search results formatting",
+			content: []mcp.ToolContent{{
+				Type: "text",
+				Text: "**Found 1 brewery(ies):**\n\n**1. Test Brewery**\n- **Location:** Portland, OR",
+			}},
+			validate: func(t *testing.T, content string) {
+				if !strings.Contains(content, "**Found") {
+					t.Error("Missing results count")
+				}
+				if !strings.Contains(content, "**Location:**") {
+					t.Error("Missing location information")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := &mcp.ToolResult{
+				Content: tt.content,
+				IsError: false,
+			}
+
+			data, err := json.Marshal(result)
+			if err != nil {
+				t.Fatalf("Failed to marshal result: %v", err)
+			}
+
+			var unmarshaled mcp.ToolResult
+			err = json.Unmarshal(data, &unmarshaled)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal result: %v", err)
+			}
+
+			if len(unmarshaled.Content) != len(tt.content) {
+				t.Errorf("Content length mismatch: got %d, want %d", len(unmarshaled.Content), len(tt.content))
+			}
+
+			tt.validate(t, unmarshaled.Content[0].Text)
+		})
 	}
 }
 
@@ -172,6 +541,102 @@ func TestMCPError_Types(t *testing.T) {
 			}
 			if err.Message != tt.want {
 				t.Errorf("Expected message '%s', got '%s'", tt.want, err.Message)
+			}
+		})
+	}
+}
+
+func TestBJCPLookup_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		wantErr     bool
+		errCode     int
+		errContains string
+	}{
+		{
+			name:        "empty parameters",
+			args:        map[string]interface{}{},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "either 'style_code' or 'style_name' parameter is required",
+		},
+		{
+			name: "empty style code",
+			args: map[string]interface{}{
+				"style_code": "",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "style_code or style_name cannot be empty",
+		},
+		{
+			name: "empty style name",
+			args: map[string]interface{}{
+				"style_name": "",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "style_code or style_name cannot be empty",
+		},
+		{
+			name: "invalid type for style_code",
+			args: map[string]interface{}{
+				"style_code": 123,
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "style_code or style_name cannot be empty",
+		},
+		{
+			name: "both parameters empty",
+			args: map[string]interface{}{
+				"style_code": "",
+				"style_name": "",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "style_code or style_name cannot be empty",
+		},
+		{
+			name: "extremely long style code",
+			args: map[string]interface{}{
+				"style_code": "999ZZZ",
+			},
+			wantErr: false, // Should not error but return "not found" message
+		},
+	}
+
+	handlers := &ToolHandlers{}
+	ctx := context.Background()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := handlers.BJCPLookup(ctx, tt.args)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Expected error but got none")
+					return
+				}
+
+				mcpErr, ok := err.(*mcp.Error)
+				if !ok {
+					t.Errorf("Expected *mcp.Error but got %T", err)
+					return
+				}
+
+				if mcpErr.Code != tt.errCode {
+					t.Errorf("Expected error code %d but got %d", tt.errCode, mcpErr.Code)
+				}
+
+				if !contains(mcpErr.Message, tt.errContains) {
+					t.Errorf("Expected error message containing %q but got %q", tt.errContains, mcpErr.Message)
+				}
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			} else if result == nil {
+				t.Error("Expected non-nil result")
 			}
 		})
 	}

@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
+	"github.com/gorilla/websocket"
 )
 
 func TestMCP_Server_Integration(t *testing.T) {
@@ -302,5 +306,225 @@ func TestMCP_ProtocolConstants(t *testing.T) {
 		if actual, exists := actualCodes[name]; !exists || actual != expected {
 			t.Errorf("Error code %s: expected %d, got %d", name, expected, actual)
 		}
+	}
+}
+
+func TestMCP_BJCPLookup_Validation(t *testing.T) {
+	tests := []struct {
+		name        string
+		styleCode   string
+		expectError bool
+		errorCode   int
+	}{
+		{"valid style code", "21A", false, 0},
+		{"lowercase style code", "21a", false, 0},
+		{"invalid style code", "99Z", true, mcp.InvalidParams},
+		{"empty style code", "", true, mcp.InvalidParams},
+		{"too long style code", "21AAAA", true, mcp.InvalidParams},
+		{"special characters", "21#A", true, mcp.InvalidParams},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolCall := mcp.CallToolRequest{
+				Name: "bjcp_lookup",
+				Arguments: map[string]interface{}{
+					"style_code": tt.styleCode,
+				},
+			}
+
+			msg := mcp.NewMessage("tools/call", toolCall)
+			data, err := json.Marshal(msg)
+			if err != nil {
+				t.Fatalf("Failed to marshal request: %v", err)
+			}
+
+			_, err = mcp.ValidateMessage(data)
+			if tt.expectError && err == nil {
+				t.Error("Expected error but got none")
+			} else if !tt.expectError && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestMCP_BeerSearch_Validation(t *testing.T) {
+	tests := []struct {
+		name        string
+		query       string
+		limit       interface{}
+		expectError bool
+		errorCode   int
+	}{
+		{"valid search", "IPA", 10, false, 0},
+		{"empty query", "", nil, true, mcp.InvalidParams},
+		{"negative limit", "IPA", -1, true, mcp.InvalidParams},
+		{"zero limit", "IPA", 0, true, mcp.InvalidParams},
+		{"too large limit", "IPA", 1001, true, mcp.InvalidParams},
+		{"invalid limit type", "IPA", "ten", true, mcp.InvalidParams},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolCall := mcp.CallToolRequest{
+				Name: "search_beers",
+				Arguments: map[string]interface{}{
+					"query": tt.query,
+					"limit": tt.limit,
+				},
+			}
+
+			msg := mcp.NewMessage("tools/call", toolCall)
+			data, err := json.Marshal(msg)
+			if err != nil {
+				t.Fatalf("Failed to marshal request: %v", err)
+			}
+
+			_, err = mcp.ValidateMessage(data)
+			if tt.expectError && err == nil {
+				t.Error("Expected error but got none")
+			} else if !tt.expectError && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestMCP_ConcurrentAccess(t *testing.T) {
+	// Test concurrent tool calls
+	concurrency := 10
+	done := make(chan bool)
+
+	for i := 0; i < concurrency; i++ {
+		go func(i int) {
+			toolCall := mcp.CallToolRequest{
+				Name: "bjcp_lookup",
+				Arguments: map[string]interface{}{
+					"style_code": "21A",
+				},
+			}
+
+			msg := mcp.NewMessage("tools/call", toolCall)
+			_, err := json.Marshal(msg)
+			if err != nil {
+				t.Errorf("Concurrent request %d failed: %v", i, err)
+			}
+			done <- true
+		}(i)
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < concurrency; i++ {
+		<-done
+	}
+}
+
+func TestMCP_WebSocketConnection(t *testing.T) {
+	// Skip in short mode
+	if testing.Short() {
+		t.Skip("Skipping WebSocket test in short mode")
+	}
+
+	// Start test server
+	server := mcp.NewServer(nil, nil)
+	ts := httptest.NewServer(http.HandlerFunc(server.HandleWebSocket))
+	defer ts.Close()
+
+	// Convert http URL to ws URL
+	wsURL := strings.Replace(ts.URL, "http", "ws", 1)
+
+	// Connect to WebSocket
+	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("Failed to connect to WebSocket: %v", err)
+	}
+	defer ws.Close()
+
+	// Send initialize message
+	initMsg := mcp.InitializeRequest{
+		ProtocolVersion: "2024-11-05",
+		ClientInfo: mcp.ClientInfo{
+			Name:    "test-client",
+			Version: "1.0.0",
+		},
+	}
+
+	err = ws.WriteJSON(mcp.NewMessage("initialize", initMsg))
+	if err != nil {
+		t.Fatalf("Failed to send initialize message: %v", err)
+	}
+
+	// Read response
+	var response mcp.Message
+	err = ws.ReadJSON(&response)
+	if err != nil {
+		t.Fatalf("Failed to read response: %v", err)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Unexpected error in response: %v", response.Error)
+	}
+}
+
+func TestMCP_Performance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping performance test in short mode")
+	}
+
+	// Performance benchmarks
+	benchmarks := []struct {
+		name       string
+		tool       string
+		args       map[string]interface{}
+		iterations int
+		maxLatency time.Duration
+	}{
+		{
+			name:       "BJCP Lookup",
+			tool:       "bjcp_lookup",
+			args:       map[string]interface{}{"style_code": "21A"},
+			iterations: 100,
+			maxLatency: 500 * time.Millisecond,
+		},
+		{
+			name:       "Beer Search",
+			tool:       "search_beers",
+			args:       map[string]interface{}{"query": "IPA", "limit": 10},
+			iterations: 100,
+			maxLatency: 500 * time.Millisecond,
+		},
+	}
+
+	for _, bm := range benchmarks {
+		t.Run(bm.name, func(t *testing.T) {
+			var totalLatency time.Duration
+
+			for i := 0; i < bm.iterations; i++ {
+				start := time.Now()
+
+				toolCall := mcp.CallToolRequest{
+					Name:      bm.tool,
+					Arguments: bm.args,
+				}
+
+				msg := mcp.NewMessage("tools/call", toolCall)
+				_, err := json.Marshal(msg)
+				if err != nil {
+					t.Fatalf("Failed to marshal request: %v", err)
+				}
+
+				latency := time.Since(start)
+				totalLatency += latency
+
+				if latency > bm.maxLatency {
+					t.Errorf("Request %d exceeded maximum latency. Got %v, want <= %v",
+						i, latency, bm.maxLatency)
+				}
+			}
+
+			avgLatency := totalLatency / time.Duration(bm.iterations)
+			t.Logf("Average latency for %s: %v", bm.name, avgLatency)
+		})
 	}
 }
