@@ -125,7 +125,9 @@ func (s *Server) HandleStdio() error {
 				continue
 			}
 
-			os.Stdout.Write(append(responseData, '\n'))
+			if _, err := os.Stdout.Write(append(responseData, '\n')); err != nil {
+				logrus.Errorf("Failed to write response to stdout: %v", err)
+			}
 		}
 	}
 
@@ -378,7 +380,7 @@ func matchesPattern(pattern, uri string) bool {
 	return pattern == uri
 }
 
-// isValidURI checks if a URI has a basic valid format (contains scheme)
+// isValidURI checks if a URI has a basic valid format (contains scheme).
 func isValidURI(uri string) bool {
 	// Very basic URI validation - just check for scheme
 	return len(uri) > 0 && len(uri) >= 3 &&
@@ -386,12 +388,12 @@ func isValidURI(uri string) bool {
 		contains(uri, "://")
 }
 
-// contains checks if a string contains a substring
+// contains checks if a string contains a substring.
 func contains(s, substr string) bool {
 	return len(substr) <= len(s) && (substr == "" || indexOf(s, substr) >= 0)
 }
 
-// indexOf returns the index of the first instance of substr in s, or -1 if substr is not present in s
+// indexOf returns the index of the first instance of substr in s, or -1 if substr is not present in s.
 func indexOf(s, substr string) int {
 	if len(substr) == 0 {
 		return 0

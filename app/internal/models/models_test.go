@@ -12,7 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Test StringArray type implementation
+// Test StringArray type implementation.
 func TestStringArray_Scan(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -149,7 +149,7 @@ func TestStringArray_Value(t *testing.T) {
 	}
 }
 
-// Test Beer model structure and JSON marshaling
+// Test Beer model structure and JSON marshaling.
 func TestBeer_JSONMarshaling(t *testing.T) {
 	now := time.Now().UTC()
 	beer := Beer{
@@ -205,7 +205,7 @@ func TestBeer_JSONMarshaling(t *testing.T) {
 	}
 }
 
-// Test Brewery model structure and JSON marshaling
+// Test Brewery model structure and JSON marshaling.
 func TestBrewery_JSONMarshaling(t *testing.T) {
 	now := time.Now().UTC()
 	brewery := Brewery{
@@ -257,7 +257,7 @@ func TestBrewery_JSONMarshaling(t *testing.T) {
 	}
 }
 
-// Test MigrateDatabase function
+// Test MigrateDatabase function.
 func TestMigrateDatabase(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -270,15 +270,21 @@ func TestMigrateDatabase(t *testing.T) {
 				// Expect all migration queries to succeed
 				mock.ExpectExec("CREATE TABLE IF NOT EXISTS breweries").WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectExec("CREATE TABLE IF NOT EXISTS beers").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_breweries_name").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_breweries_location").WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_breweries_name").
+					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_breweries_location").
+					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_beers_name").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_beers_brewery").WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_beers_brewery").
+					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectExec("CREATE INDEX IF NOT EXISTS idx_beers_style").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("CREATE OR REPLACE FUNCTION update_updated_at_column").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("DROP TRIGGER IF EXISTS update_breweries_updated_at").WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("CREATE OR REPLACE FUNCTION update_updated_at_column").
+					WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("DROP TRIGGER IF EXISTS update_breweries_updated_at").
+					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectExec("CREATE TRIGGER update_breweries_updated_at").WillReturnResult(sqlmock.NewResult(0, 0))
-				mock.ExpectExec("DROP TRIGGER IF EXISTS update_beers_updated_at").WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec("DROP TRIGGER IF EXISTS update_beers_updated_at").
+					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectExec("CREATE TRIGGER update_beers_updated_at").WillReturnResult(sqlmock.NewResult(0, 0))
 			},
 			expectErr: false,
@@ -325,7 +331,7 @@ func TestMigrateDatabase(t *testing.T) {
 	}
 }
 
-// Test edge cases for Beer model
+// Test edge cases for Beer model.
 func TestBeer_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
@@ -388,7 +394,7 @@ func TestBeer_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test edge cases for Brewery model
+// Test edge cases for Brewery model.
 func TestBrewery_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -463,7 +469,7 @@ func TestBrewery_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test StringArray with edge cases
+// Test StringArray with edge cases.
 func TestStringArray_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -524,12 +530,12 @@ func TestStringArray_EdgeCases(t *testing.T) {
 	}
 }
 
-// Benchmark tests for performance
+// Benchmark tests for performance.
 func BenchmarkStringArray_Scan(b *testing.B) {
 	jsonData := `["beer", "brewing", "hops", "malt", "yeast", "water", "fermentation"]`
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var s StringArray
 		err := s.Scan(jsonData)
 		if err != nil {
@@ -542,7 +548,7 @@ func BenchmarkStringArray_Value(b *testing.B) {
 	s := StringArray{"beer", "brewing", "hops", "malt", "yeast", "water", "fermentation"}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := s.Value()
 		if err != nil {
 			b.Fatalf("Unexpected error: %v", err)
@@ -565,7 +571,7 @@ func BenchmarkBeer_JSONMarshal(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := json.Marshal(beer)
 		if err != nil {
 			b.Fatalf("json.Marshal() error: %v", err)
@@ -573,7 +579,7 @@ func BenchmarkBeer_JSONMarshal(b *testing.B) {
 	}
 }
 
-// Test database field tags
+// Test database field tags.
 func TestModel_DatabaseTags(t *testing.T) {
 	beerType := reflect.TypeOf(Beer{})
 

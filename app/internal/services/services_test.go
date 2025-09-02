@@ -17,12 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test data constants
+// Test data constants.
 const (
 	testTimeout = 5 * time.Second
 )
 
-// Mock data for tests
+// Mock data for tests.
 var mockBreweryData = []*BrewerySearchResult{
 	{
 		ID:          1,
@@ -62,7 +62,7 @@ var mockBreweryData = []*BrewerySearchResult{
 	},
 }
 
-// Helper function to convert []interface{} to []driver.Value
+// Helper function to convert []interface{} to []driver.Value.
 func interfaceToDriverValues(args []interface{}) []driver.Value {
 	values := make([]driver.Value, len(args))
 	for i, arg := range args {
@@ -76,7 +76,7 @@ func setupBreweryService(db *sqlx.DB) *BreweryService {
 	return NewBreweryService(db, nil)
 }
 
-// TestNewBreweryService tests the constructor
+// TestNewBreweryService tests the constructor.
 func TestNewBreweryService(t *testing.T) {
 	db, _ := setupMockDB(t)
 	defer db.Close()
@@ -101,7 +101,7 @@ func TestNewBreweryService_WithNilRedis(t *testing.T) {
 	assert.Nil(t, service.redisClient)
 }
 
-// TestBrewerySearchQuery_DefaultLimits tests limit validation (existing test enhanced)
+// TestBrewerySearchQuery_DefaultLimits tests limit validation (existing test enhanced).
 func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -134,7 +134,7 @@ func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 	}
 }
 
-// Integration-style tests for query building logic
+// Integration-style tests for query building logic.
 func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -207,7 +207,7 @@ func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 	}
 }
 
-// Test Result Mapping and Data Types
+// Test Result Mapping and Data Types.
 func TestSearchBreweries_ResultMapping(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -259,12 +259,16 @@ func TestSearchBreweries_ResultMapping(t *testing.T) {
 	assert.Equal(t, "94102-1234", result.PostalCode)
 	assert.Equal(t, "United States of America", result.Country)
 	assert.Equal(t, "+1 (555) 123-4567 ext. 890", result.Phone)
-	assert.Equal(t, "https://www.very-long-brewery-name-with-hyphens-and-subdomains.brewery.com/path?param=value", result.Website)
+	assert.Equal(
+		t,
+		"https://www.very-long-brewery-name-with-hyphens-and-subdomains.brewery.com/path?param=value",
+		result.Website,
+	)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test for potential memory leaks with large result sets
+// Test for potential memory leaks with large result sets.
 func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping memory leak test in short mode")
@@ -276,7 +280,7 @@ func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 	service := setupBreweryService(db)
 
 	// Run multiple queries to check for memory leaks
-	for iteration := 0; iteration < 10; iteration++ {
+	for iteration := range 10 {
 		query := BrewerySearchQuery{
 			Name:  fmt.Sprintf("Test%d", iteration),
 			Limit: 50,
@@ -287,9 +291,18 @@ func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 		})
 
 		// Add 50 results per iteration
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			rows.AddRow(
-				i+(iteration*50), fmt.Sprintf("Test Brewery %d-%d", iteration, i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+				i+(iteration*50),
+				fmt.Sprintf("Test Brewery %d-%d", iteration, i),
+				"micro",
+				"123 Main St",
+				"Test City",
+				"CA",
+				"12345",
+				"USA",
+				"+1234567890",
+				"https://test.com",
 			)
 		}
 
@@ -315,7 +328,7 @@ func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test for partial matches and fuzzy searching behavior
+// Test for partial matches and fuzzy searching behavior.
 func TestSearchBreweries_PartialMatching(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -352,7 +365,16 @@ func TestSearchBreweries_PartialMatching(t *testing.T) {
 
 			for i, name := range tc.breweryNames {
 				rows.AddRow(
-					i+1, name, "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+					i+1,
+					name,
+					"micro",
+					"123 Main St",
+					"Test City",
+					"CA",
+					"12345",
+					"USA",
+					"+1234567890",
+					"https://test.com",
 				)
 			}
 
@@ -380,7 +402,7 @@ func TestSearchBreweries_PartialMatching(t *testing.T) {
 	}
 }
 
-// TestBrewerySearchResult_FieldsExist tests struct field existence (existing test enhanced)
+// TestBrewerySearchResult_FieldsExist tests struct field existence (existing test enhanced).
 func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 	// Test that all expected fields exist on the BrewerySearchResult struct
 	brewery := &BrewerySearchResult{
@@ -405,7 +427,7 @@ func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 	assert.Equal(t, "https://www.devilspeak.beer", brewery.Website)
 }
 
-// Happy Path Tests
+// Happy Path Tests.
 func TestSearchBreweries_ByName_Success(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -446,7 +468,7 @@ func TestSearchBreweries_ByName_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test Location OR logic specifically
+// Test Location OR logic specifically.
 func TestSearchBreweries_LocationOrLogic(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -462,9 +484,10 @@ func TestSearchBreweries_LocationOrLogic(t *testing.T) {
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
 		1, "San Diego Brewery", "micro", "123 Main St", "San Diego", "CA", "92101", "USA", "+1234567890", "https://sandiego.com",
-	).AddRow(
-		2, "Francisco Brewing", "micro", "456 Oak St", "San Francisco", "CA", "94102", "USA", "+1234567891", "https://sf.com",
-	)
+	).
+		AddRow(
+			2, "Francisco Brewing", "micro", "456 Oak St", "San Francisco", "CA", "94102", "USA", "+1234567891", "https://sf.com",
+		)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
 		FROM breweries
@@ -484,7 +507,7 @@ func TestSearchBreweries_LocationOrLogic(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test multiple conditions AND logic
+// Test multiple conditions AND logic.
 func TestSearchBreweries_MultipleConditionsAndLogic(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -527,7 +550,7 @@ func TestSearchBreweries_MultipleConditionsAndLogic(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Performance regression test
+// Performance regression test.
 func TestSearchBreweries_PerformanceRegression(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping performance test in short mode")
@@ -548,9 +571,18 @@ func TestSearchBreweries_PerformanceRegression(t *testing.T) {
 	})
 
 	// Add 50 results
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		rows.AddRow(
-			i, fmt.Sprintf("Test Brewery %d", i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+			i,
+			fmt.Sprintf("Test Brewery %d", i),
+			"micro",
+			"123 Main St",
+			"Test City",
+			"CA",
+			"12345",
+			"USA",
+			"+1234567890",
+			"https://test.com",
 		)
 	}
 
@@ -578,7 +610,7 @@ func TestSearchBreweries_PerformanceRegression(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test that demonstrates proper error wrapping
+// Test that demonstrates proper error wrapping.
 func TestSearchBreweries_ErrorWrapping(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -610,7 +642,7 @@ func TestSearchBreweries_ErrorWrapping(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test data consistency
+// Test data consistency.
 func TestBrewerySearchResult_DatabaseTagConsistency(t *testing.T) {
 	// Verify that struct tags match expected database column names
 	brewery := BrewerySearchResult{}
@@ -635,7 +667,7 @@ func TestBrewerySearchResult_DatabaseTagConsistency(t *testing.T) {
 	assert.Len(t, expectedFields, 10, "BrewerySearchResult should have exactly 10 fields")
 }
 
-// Table-driven test for all search combinations
+// Table-driven test for all search combinations.
 func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -853,7 +885,7 @@ func TestSearchBreweries_MultipleFilters_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Sad Path Tests
+// Sad Path Tests.
 func TestSearchBreweries_NoResults(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -881,7 +913,7 @@ func TestSearchBreweries_NoResults(t *testing.T) {
 	require.NoError(t, err)
 	// For no results, accept both nil slice and empty slice
 	if results != nil {
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 	}
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -912,7 +944,7 @@ func TestSearchBreweries_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Edge Cases and Boundary Tests
+// Edge Cases and Boundary Tests.
 func TestSearchBreweries_EmptyFilters(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1052,11 +1084,11 @@ func TestSearchBreweries_UnicodeCharacters(t *testing.T) {
 	results, err := service.SearchBreweries(ctx, query)
 
 	require.NoError(t, err)
-	assert.Len(t, results, 0)
+	assert.Empty(t, results)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Context and Timeout Tests
+// Context and Timeout Tests.
 func TestSearchBreweries_ContextTimeout(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1120,7 +1152,7 @@ func TestSearchBreweries_ContextCancellation(t *testing.T) {
 	assert.Contains(t, err.Error(), "context canceled")
 }
 
-// Performance Tests
+// Performance Tests.
 func TestSearchBreweries_LargeResultSet(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1165,7 +1197,7 @@ func TestSearchBreweries_LargeResultSet(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Integration-like tests (with mock database)
+// Integration-like tests (with mock database).
 func TestSearchBreweries_ComplexLocationSearch(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1211,7 +1243,7 @@ func TestSearchBreweries_ComplexLocationSearch(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Validation Tests
+// Validation Tests.
 func TestSearchBreweries_AllEmptyFields(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1243,12 +1275,12 @@ func TestSearchBreweries_AllEmptyFields(t *testing.T) {
 	require.NoError(t, err)
 	// For empty fields test, accept both nil slice and empty slice
 	if results != nil {
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 	}
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Security Tests - SQL Injection Prevention
+// Security Tests - SQL Injection Prevention.
 func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 	testCases := []struct {
 		name      string
@@ -1349,7 +1381,7 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 	}
 }
 
-// Data Integrity Tests
+// Data Integrity Tests.
 func TestSearchBreweries_NullValueHandling(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1385,10 +1417,10 @@ func TestSearchBreweries_NullValueHandling(t *testing.T) {
 	assert.Len(t, results, 2)
 
 	// Verify that empty strings are handled properly
-	assert.Equal(t, "", results[0].Street)
-	assert.Equal(t, "", results[0].State)
-	assert.Equal(t, "", results[1].BreweryType)
-	assert.Equal(t, "", results[1].City)
+	assert.Empty(t, results[0].Street)
+	assert.Empty(t, results[0].State)
+	assert.Empty(t, results[1].BreweryType)
+	assert.Empty(t, results[1].City)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -1432,7 +1464,7 @@ func TestSearchBreweries_LongFieldValues(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Concurrency Tests
+// Concurrency Tests.
 func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1451,7 +1483,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
 
 	// Expect multiple queries
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		mock.ExpectQuery(expectedSQL).
 			WithArgs("%Test%", 20).
 			WillReturnRows(rows)
@@ -1466,7 +1498,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	const numRoutines = 5
 	results := make(chan error, numRoutines)
 
-	for i := 0; i < numRoutines; i++ {
+	for range numRoutines {
 		go func() {
 			ctx := context.Background()
 			_, err := service.SearchBreweries(ctx, query)
@@ -1475,7 +1507,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	}
 
 	// Collect results
-	for i := 0; i < numRoutines; i++ {
+	for range numRoutines {
 		err := <-results
 		assert.NoError(t, err)
 	}
@@ -1483,7 +1515,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Memory Usage Tests
+// Memory Usage Tests.
 func TestSearchBreweries_MemoryUsage(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1500,9 +1532,18 @@ func TestSearchBreweries_MemoryUsage(t *testing.T) {
 	})
 
 	// Add many results to test memory usage
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		rows.AddRow(
-			i, fmt.Sprintf("Test Brewery %d", i), "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://test.com",
+			i,
+			fmt.Sprintf("Test Brewery %d", i),
+			"micro",
+			"123 Main St",
+			"Test City",
+			"CA",
+			"12345",
+			"USA",
+			"+1234567890",
+			"https://test.com",
 		)
 	}
 
@@ -1524,7 +1565,7 @@ func TestSearchBreweries_MemoryUsage(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Regression Tests
+// Regression Tests.
 func TestSearchBreweries_OrderByName(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1541,11 +1582,13 @@ func TestSearchBreweries_OrderByName(t *testing.T) {
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
 		1, "Alpha Brewing", "micro", "123 Main St", "Test City", "CA", "12345", "USA", "+1234567890", "https://alpha.com",
-	).AddRow(
-		2, "Beta Brewing", "micro", "456 Oak St", "Test City", "CA", "12345", "USA", "+1234567891", "https://beta.com",
-	).AddRow(
-		3, "Charlie Brewing", "micro", "789 Pine St", "Test City", "CA", "12345", "USA", "+1234567892", "https://charlie.com",
-	)
+	).
+		AddRow(
+			2, "Beta Brewing", "micro", "456 Oak St", "Test City", "CA", "12345", "USA", "+1234567891", "https://beta.com",
+		).
+		AddRow(
+			3, "Charlie Brewing", "micro", "789 Pine St", "Test City", "CA", "12345", "USA", "+1234567892", "https://charlie.com",
+		)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
 		FROM breweries
@@ -1569,7 +1612,7 @@ func TestSearchBreweries_OrderByName(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Whitespace and Trimming Tests
+// Whitespace and Trimming Tests.
 func TestSearchBreweries_WhitespaceHandling(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1607,7 +1650,7 @@ func TestSearchBreweries_WhitespaceHandling(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Database Error Scenarios
+// Database Error Scenarios.
 func TestSearchBreweries_DatabaseConnectionError(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1664,7 +1707,7 @@ func TestSearchBreweries_QuerySyntaxError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Edge Case: Very Short Search Terms
+// Edge Case: Very Short Search Terms.
 func TestSearchBreweries_SingleCharacterSearch(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1699,7 +1742,7 @@ func TestSearchBreweries_SingleCharacterSearch(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Test State and Country Filters
+// Test State and Country Filters.
 func TestSearchBreweries_StateFilter(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1774,7 +1817,7 @@ func TestSearchBreweries_CountryFilter(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Benchmark Tests
+// Benchmark Tests.
 func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 	db, mock := setupMockDB(&testing.T{})
 	defer db.Close()
@@ -1796,7 +1839,7 @@ func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 		FROM breweries
 		WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) ORDER BY name LIMIT \$2`
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mock.ExpectQuery(expectedSQL).
 			WithArgs("%Test%", 20).
 			WillReturnRows(rows)
@@ -1804,7 +1847,7 @@ func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ctx := context.Background()
 		_, err := service.SearchBreweries(ctx, query)
 		if err != nil {
@@ -1813,7 +1856,7 @@ func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 	}
 }
 
-// Helper function tests
+// Helper function tests.
 func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1880,7 +1923,7 @@ func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 	}
 }
 
-// Test struct field completeness and types
+// Test struct field completeness and types.
 func TestBrewerySearchResult_StructIntegrity(t *testing.T) {
 	brewery := BrewerySearchResult{
 		ID:          123,
@@ -1920,7 +1963,7 @@ func TestBrewerySearchResult_StructIntegrity(t *testing.T) {
 	assert.Equal(t, "https://test.com", brewery.Website)
 }
 
-// Edge case: Empty database
+// Edge case: Empty database.
 func TestSearchBreweries_EmptyDatabase(t *testing.T) {
 	db, mock := setupMockDB(t)
 	defer db.Close()
@@ -1949,7 +1992,7 @@ func TestSearchBreweries_EmptyDatabase(t *testing.T) {
 	require.NoError(t, err)
 	// For empty database test, accept both nil slice and empty slice
 	if results != nil {
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 	}
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

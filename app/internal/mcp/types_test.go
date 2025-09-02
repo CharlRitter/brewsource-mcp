@@ -2,12 +2,13 @@ package mcp
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 )
 
-// Test Message Validation - Enhanced with edge cases
+// Test Message Validation - Enhanced with edge cases.
 func TestMessage_Validation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -125,7 +126,8 @@ func TestMessage_Validation(t *testing.T) {
 			}
 
 			if err != nil {
-				mcpErr, ok := err.(*Error)
+				mcpErr := &Error{}
+				ok := errors.As(err, &mcpErr)
 				if !ok {
 					t.Errorf("Expected MCP Error, got %T", err)
 					return
@@ -143,7 +145,7 @@ func TestMessage_Validation(t *testing.T) {
 	}
 }
 
-// Test Error interface implementation
+// Test Error interface implementation.
 func TestError_Error(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -186,7 +188,7 @@ func TestError_Error(t *testing.T) {
 	}
 }
 
-// Test ToolResult creation functions
+// Test ToolResult creation functions.
 func TestNewToolResult(t *testing.T) {
 	tests := []struct {
 		name string
@@ -287,7 +289,7 @@ func TestNewErrorResult(t *testing.T) {
 	}
 }
 
-// Test MCP Error creation with comprehensive scenarios
+// Test MCP Error creation with comprehensive scenarios.
 func TestNewMCPError(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -350,7 +352,7 @@ func TestNewMCPError(t *testing.T) {
 	}
 }
 
-// Test Message creation functions
+// Test Message creation functions.
 func TestNewMessage(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -528,7 +530,7 @@ func TestNewErrorResponse(t *testing.T) {
 	}
 }
 
-// Test JSON Schema helpers
+// Test JSON Schema helpers.
 func TestStringSchema(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -643,7 +645,7 @@ func TestObjectSchema(t *testing.T) {
 	}
 }
 
-// Test JSON marshaling and unmarshaling
+// Test JSON marshaling and unmarshaling.
 func TestMessage_JSONMarshaling(t *testing.T) {
 	tests := []struct {
 		name string
@@ -706,7 +708,13 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 
 			// Compare IDs with type conversion for JSON numeric handling
 			if !compareIDs(unmarshaled.ID, tt.msg.ID) {
-				t.Errorf("Unmarshaled ID = %v (type %T), want %v (type %T)", unmarshaled.ID, unmarshaled.ID, tt.msg.ID, tt.msg.ID)
+				t.Errorf(
+					"Unmarshaled ID = %v (type %T), want %v (type %T)",
+					unmarshaled.ID,
+					unmarshaled.ID,
+					tt.msg.ID,
+					tt.msg.ID,
+				)
 			}
 
 			if unmarshaled.Method != tt.msg.Method {
@@ -732,7 +740,7 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 	}
 }
 
-// Test error code constants
+// Test error code constants.
 func TestErrorCodes(t *testing.T) {
 	expectedCodes := map[string]int{
 		"ParseError":     -32700,
@@ -759,7 +767,7 @@ func TestErrorCodes(t *testing.T) {
 	}
 }
 
-// Test ToolContent structure
+// Test ToolContent structure.
 func TestToolContent(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -818,12 +826,12 @@ func TestToolContent(t *testing.T) {
 	}
 }
 
-// Benchmark tests for performance validation
+// Benchmark tests for performance validation.
 func BenchmarkValidateMessage(b *testing.B) {
 	validJSON := []byte(`{"jsonrpc":"2.0","method":"test","id":1}`)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := ValidateMessage(validJSON)
 		if err != nil {
 			b.Fatalf("Unexpected error: %v", err)
@@ -835,7 +843,7 @@ func BenchmarkNewToolResult(b *testing.B) {
 	text := "This is a test result with some content"
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		result := NewToolResult(text)
 		if result == nil {
 			b.Fatal("NewToolResult returned nil")
@@ -852,7 +860,7 @@ func BenchmarkMessage_JSONMarshal(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := json.Marshal(msg)
 		if err != nil {
 			b.Fatalf("json.Marshal() error: %v", err)
@@ -860,7 +868,7 @@ func BenchmarkMessage_JSONMarshal(b *testing.B) {
 	}
 }
 
-// compareIDs compares two ID values, handling JSON number type conversions
+// compareIDs compares two ID values, handling JSON number type conversions.
 func compareIDs(id1, id2 interface{}) bool {
 	if reflect.DeepEqual(id1, id2) {
 		return true

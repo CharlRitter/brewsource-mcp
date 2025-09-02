@@ -10,17 +10,19 @@ import (
 	"time"
 
 	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
+	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
-
-	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/gorilla/websocket"
 )
 
-// mockBeerService implements a mock for BeerService for testing
+// mockBeerService implements a mock for BeerService for testing.
 type mockBeerService struct{}
 
-func (m *mockBeerService) SearchBeers(ctx context.Context, query services.BeerSearchQuery) ([]*services.BeerSearchResult, error) {
+func (m *mockBeerService) SearchBeers(
+	ctx context.Context,
+	query services.BeerSearchQuery,
+) ([]*services.BeerSearchResult, error) {
 	return nil, nil
 }
 
@@ -434,7 +436,7 @@ func TestMCP_ConcurrentAccess(t *testing.T) {
 	concurrency := 10
 	done := make(chan bool)
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		go func(i int) {
 			toolCall := mcp.CallToolRequest{
 				Name: "bjcp_lookup",
@@ -453,7 +455,7 @@ func TestMCP_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		<-done
 	}
 }
@@ -538,7 +540,7 @@ func TestMCP_Performance(t *testing.T) {
 		t.Run(bm.name, func(t *testing.T) {
 			var totalLatency time.Duration
 
-			for i := 0; i < bm.iterations; i++ {
+			for i := range bm.iterations {
 				start := time.Now()
 
 				toolCall := mcp.CallToolRequest{

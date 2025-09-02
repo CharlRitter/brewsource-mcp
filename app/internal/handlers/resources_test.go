@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -440,7 +441,7 @@ func TestHandleBeerResource_Catalog(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery("SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu FROM beers b").
 					WithArgs("%IPA%", 10).
-					WillReturnError(fmt.Errorf("database error"))
+					WillReturnError(errors.New("database error"))
 			},
 			expectedError: true,
 		},
@@ -659,7 +660,7 @@ func TestHandleBreweryResource_Directory(t *testing.T) {
 			name: "database error",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(`SELECT (.+) FROM breweries WHERE 1=1`).
-					WillReturnError(fmt.Errorf("database error"))
+					WillReturnError(errors.New("database error"))
 			},
 			uri:           "breweries://directory",
 			expectedError: true,

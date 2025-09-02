@@ -109,7 +109,7 @@ k9s:
 	@echo "🎯 Starting in 'brewsource-dev' namespace where your services are running"
 	@k9s --context kind-brewsource-dev --namespace brewsource-dev
 
-# Application development (run inside app directory)
+# Application development
 
 # Build the Go application binary
 build:

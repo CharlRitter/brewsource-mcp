@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// BreweryServiceInterface abstracts brewery search for handler injection and testing
+// BreweryServiceInterface abstracts brewery search for handler injection and testing.
 type BreweryServiceInterface interface {
 	SearchBreweries(ctx context.Context, query BrewerySearchQuery) ([]*BrewerySearchResult, error)
 }
@@ -26,16 +26,16 @@ type BrewerySearchQuery struct {
 
 // BrewerySearchResult represents a brewery search result.
 type BrewerySearchResult struct {
-	ID          int    `db:"id" json:"id"`
-	Name        string `db:"name" json:"name"`
+	ID          int    `db:"id"           json:"id"`
+	Name        string `db:"name"         json:"name"`
 	BreweryType string `db:"brewery_type" json:"brewery_type"`
-	Street      string `db:"street" json:"street"`
-	City        string `db:"city" json:"city"`
-	State       string `db:"state" json:"state"`
-	PostalCode  string `db:"postal_code" json:"postal_code"`
-	Country     string `db:"country" json:"country"`
-	Phone       string `db:"phone" json:"phone"`
-	Website     string `db:"website_url" json:"website_url"`
+	Street      string `db:"street"       json:"street"`
+	City        string `db:"city"         json:"city"`
+	State       string `db:"state"        json:"state"`
+	PostalCode  string `db:"postal_code"  json:"postal_code"`
+	Country     string `db:"country"      json:"country"`
+	Phone       string `db:"phone"        json:"phone"`
+	Website     string `db:"website_url"  json:"website_url"`
 }
 
 // BreweryService handles brewery-related operations.

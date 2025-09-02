@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Mock data for testing
+// Mock data for testing.
 var (
 	mockBeerRows = [][]driver.Value{
 		{1, "King's Blockhouse IPA", "American IPA", "Devil's Peak Brewing Company", "South Africa", 6.0, 60},
@@ -37,7 +37,7 @@ func setupBeerService(db *sqlx.DB) *BeerService {
 	return NewBeerService(db, redisClient)
 }
 
-// Test NewBeerService constructor
+// Test NewBeerService constructor.
 func TestNewBeerService(t *testing.T) {
 	t.Run("Valid initialization", func(t *testing.T) {
 		db := &sqlx.DB{}
@@ -66,7 +66,7 @@ func TestNewBeerService(t *testing.T) {
 	})
 }
 
-// Test struct field validation
+// Test struct field validation.
 func TestBeerSearchQuery_Fields(t *testing.T) {
 	t.Run("All fields set correctly", func(t *testing.T) {
 		q := BeerSearchQuery{
@@ -113,7 +113,7 @@ func TestBeerSearchResult_Fields(t *testing.T) {
 	})
 }
 
-// Happy Path Tests
+// Happy Path Tests.
 func TestSearchBeers_HappyPath(t *testing.T) {
 	t.Run("Search with name only", func(t *testing.T) {
 		db, mock := setupMockDB(t)
@@ -177,7 +177,7 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
 
 		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			rows.AddRow(mockBeerRows[i]...)
 		}
 
@@ -210,13 +210,13 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		results, err := svc.SearchBeers(context.Background(), query)
 
 		assert.NoError(t, err)
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 		assert.NotNil(t, results) // Should be empty slice, not nil
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
-// Edge Cases and Boundary Testing
+// Edge Cases and Boundary Testing.
 func TestSearchBeers_EdgeCases(t *testing.T) {
 	t.Run("Empty query parameters", func(t *testing.T) {
 		db, mock := setupMockDB(t)
@@ -335,12 +335,12 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		results, err := svc.SearchBeers(context.Background(), query)
 
 		assert.NoError(t, err)
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
-// Error Handling Tests
+// Error Handling Tests.
 func TestSearchBeers_ErrorHandling(t *testing.T) {
 	t.Run("Database connection error", func(t *testing.T) {
 		db, mock := setupMockDB(t)
@@ -411,7 +411,7 @@ func TestSearchBeers_ErrorHandling(t *testing.T) {
 	})
 }
 
-// Context and Timeout Tests
+// Context and Timeout Tests.
 func TestSearchBeers_Context(t *testing.T) {
 	t.Run("Context cancellation", func(t *testing.T) {
 		db, _ := setupMockDB(t)
@@ -448,7 +448,7 @@ func TestSearchBeers_Context(t *testing.T) {
 	})
 }
 
-// Performance Tests
+// Performance Tests.
 func TestSearchBeers_Performance(t *testing.T) {
 	t.Run("Large result set handling", func(t *testing.T) {
 		db, mock := setupMockDB(t)
@@ -459,7 +459,7 @@ func TestSearchBeers_Performance(t *testing.T) {
 
 		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 		// Simulate 100 results instead of 1000 to avoid excessive output
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			rows.AddRow(i, fmt.Sprintf("Beer %d", i), "Style", "Brewery", "Country", 5.0, 30)
 		}
 
@@ -479,7 +479,7 @@ func TestSearchBeers_Performance(t *testing.T) {
 	})
 }
 
-// SQL Injection Prevention Tests
+// SQL Injection Prevention Tests.
 func TestSearchBeers_SQLInjectionPrevention(t *testing.T) {
 	t.Run("SQL injection attempts in name", func(t *testing.T) {
 		db, mock := setupMockDB(t)
@@ -499,12 +499,12 @@ func TestSearchBeers_SQLInjectionPrevention(t *testing.T) {
 		results, err := svc.SearchBeers(context.Background(), query)
 
 		assert.NoError(t, err)
-		assert.Len(t, results, 0)
+		assert.Empty(t, results)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
-// Integration Test (requires real database)
+// Integration Test (requires real database).
 func TestSearchBeers_Integration(t *testing.T) {
 	// This test can be enabled when a test database is available
 	t.Skip("Integration test requires test database")
@@ -529,7 +529,7 @@ func TestSearchBeers_Integration(t *testing.T) {
 		assert.NotNil(t, results)
 		// If database has data, we should get results
 		if len(results) > 0 {
-			assert.True(t, len(results) <= 5)
+			assert.LessOrEqual(t, len(results), 5)
 			for _, result := range results {
 				assert.NotEmpty(t, result.Name)
 				assert.NotEmpty(t, result.Brewery)
@@ -539,7 +539,7 @@ func TestSearchBeers_Integration(t *testing.T) {
 	})
 }
 
-// Benchmark Tests
+// Benchmark Tests.
 func BenchmarkSearchBeers(b *testing.B) {
 	db, mock := setupMockDB(&testing.T{})
 	defer db.Close()
@@ -550,7 +550,7 @@ func BenchmarkSearchBeers(b *testing.B) {
 	rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 		AddRow(mockBeerRows[0]...)
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%IPA%").
 			WillReturnRows(rows)
@@ -559,7 +559,7 @@ func BenchmarkSearchBeers(b *testing.B) {
 	query := BeerSearchQuery{Name: "IPA"}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = svc.SearchBeers(context.Background(), query)
 	}
 }

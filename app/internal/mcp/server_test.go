@@ -3,9 +3,9 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -463,7 +463,7 @@ func TestConcurrentToolCalls(t *testing.T) {
 	concurrency := 10
 	done := make(chan bool)
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		go func(id int) {
 			params := map[string]interface{}{
 				"name":      "mock_tool",
@@ -471,7 +471,7 @@ func TestConcurrentToolCalls(t *testing.T) {
 			}
 			msg := &Message{
 				JSONRPC: "2.0",
-				ID:      fmt.Sprintf("%d", id),
+				ID:      strconv.Itoa(id),
 				Method:  "tools/call",
 				Params:  params,
 			}
@@ -485,7 +485,7 @@ func TestConcurrentToolCalls(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		<-done
 	}
 }

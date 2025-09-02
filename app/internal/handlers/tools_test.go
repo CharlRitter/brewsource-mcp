@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -156,10 +157,13 @@ func TestSearchBeersTool_Definition(t *testing.T) {
 	}
 }
 
-// mockBeerService implements a mock for BeerService for testing
+// mockBeerService implements a mock for BeerService for testing.
 type mockBeerService struct{}
 
-func (m *mockBeerService) SearchBeers(ctx context.Context, query services.BeerSearchQuery) ([]*services.BeerSearchResult, error) {
+func (m *mockBeerService) SearchBeers(
+	ctx context.Context,
+	query services.BeerSearchQuery,
+) ([]*services.BeerSearchResult, error) {
 	return []*services.BeerSearchResult{
 		{
 			Name:    "Test Beer",
@@ -169,10 +173,13 @@ func (m *mockBeerService) SearchBeers(ctx context.Context, query services.BeerSe
 	}, nil
 }
 
-// mockBreweryService implements a mock for BreweryService for testing
+// mockBreweryService implements a mock for BreweryService for testing.
 type mockBreweryService struct{}
 
-func (m *mockBreweryService) SearchBreweries(ctx context.Context, query services.BrewerySearchQuery) ([]*services.BrewerySearchResult, error) {
+func (m *mockBreweryService) SearchBreweries(
+	ctx context.Context,
+	query services.BrewerySearchQuery,
+) ([]*services.BrewerySearchResult, error) {
 	return []*services.BrewerySearchResult{
 		{
 			ID:          1,
@@ -268,7 +275,8 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 					return
 				}
 
-				mcpErr, ok := err.(*mcp.Error)
+				mcpErr := &mcp.Error{}
+				ok := errors.As(err, &mcpErr)
 				if !ok {
 					t.Errorf("Expected *mcp.Error but got %T", err)
 					return
@@ -426,7 +434,8 @@ func TestFindBreweries_EdgeCases(t *testing.T) {
 					return
 				}
 
-				mcpErr, ok := err.(*mcp.Error)
+				mcpErr := &mcp.Error{}
+				ok := errors.As(err, &mcpErr)
 				if !ok {
 					t.Errorf("Expected *mcp.Error but got %T", err)
 					return
@@ -661,7 +670,8 @@ func TestBJCPLookup_EdgeCases(t *testing.T) {
 					return
 				}
 
-				mcpErr, ok := err.(*mcp.Error)
+				mcpErr := &mcp.Error{}
+				ok := errors.As(err, &mcpErr)
 				if !ok {
 					t.Errorf("Expected *mcp.Error but got %T", err)
 					return

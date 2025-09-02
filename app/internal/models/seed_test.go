@@ -6,15 +6,14 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	// Assuming you're using a testing database driver like sqlite for tests.
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	// Assuming you're using a testing database driver like sqlite for tests
-	_ "github.com/mattn/go-sqlite3"
 )
 
-// Test database setup and teardown helpers
+// Test database setup and teardown helpers.
 func setupTestDB(t *testing.T) *sqlx.DB {
 	// Using in-memory SQLite for testing
 	db, err := sqlx.Open("sqlite3", ":memory:")
@@ -311,7 +310,11 @@ func TestSeedBeers_HappyPath(t *testing.T) {
 			SRM         float64 `db:"srm"`
 			Description string  `db:"description"`
 		}
-		err = db.Get(&beer, "SELECT name, style, abv, ibu, srm, description FROM beers WHERE name = ?", "King's Blockhouse IPA")
+		err = db.Get(
+			&beer,
+			"SELECT name, style, abv, ibu, srm, description FROM beers WHERE name = ?",
+			"King's Blockhouse IPA",
+		)
 		require.NoError(t, err)
 		assert.Equal(t, "American IPA", beer.Style)
 		assert.Equal(t, 6.0, beer.ABV)
@@ -385,20 +388,20 @@ func TestGetSeedBreweries_DataValidation(t *testing.T) {
 
 		// Validate each brewery has required fields
 		for i, brewery := range breweries {
-			assert.NotEmpty(t, brewery.Name, fmt.Sprintf("Brewery %d should have a name", i))
-			assert.NotEmpty(t, brewery.BreweryType, fmt.Sprintf("Brewery %d should have a type", i))
-			assert.NotEmpty(t, brewery.City, fmt.Sprintf("Brewery %d should have a city", i))
-			assert.NotEmpty(t, brewery.State, fmt.Sprintf("Brewery %d should have a state", i))
-			assert.NotEmpty(t, brewery.Country, fmt.Sprintf("Brewery %d should have a country", i))
+			assert.NotEmpty(t, brewery.Name, "Brewery %d should have a name", i)
+			assert.NotEmpty(t, brewery.BreweryType, "Brewery %d should have a type", i)
+			assert.NotEmpty(t, brewery.City, "Brewery %d should have a city", i)
+			assert.NotEmpty(t, brewery.State, "Brewery %d should have a state", i)
+			assert.NotEmpty(t, brewery.Country, "Brewery %d should have a country", i)
 
 			// Validate brewery type
-			assert.Equal(t, "micro", brewery.BreweryType, fmt.Sprintf("Brewery %d should be 'micro' type", i))
+			assert.Equal(t, "micro", brewery.BreweryType, "Brewery %d should be 'micro' type", i)
 
 			// Validate country
-			assert.Equal(t, "South Africa", brewery.Country, fmt.Sprintf("Brewery %d should be in South Africa", i))
+			assert.Equal(t, "South Africa", brewery.Country, "Brewery %d should be in South Africa", i)
 
 			// Validate state
-			assert.Equal(t, "Western Cape", brewery.State, fmt.Sprintf("Brewery %d should be in Western Cape", i))
+			assert.Equal(t, "Western Cape", brewery.State, "Brewery %d should be in Western Cape", i)
 		}
 	})
 }
@@ -413,22 +416,22 @@ func TestGetSeedBeers_DataValidation(t *testing.T) {
 
 		// Validate each beer has required fields
 		for i, beer := range beers {
-			assert.NotEmpty(t, beer.Name, fmt.Sprintf("Beer %d should have a name", i))
-			assert.NotEmpty(t, beer.BreweryName, fmt.Sprintf("Beer %d should have a brewery name", i))
-			assert.NotEmpty(t, beer.Style, fmt.Sprintf("Beer %d should have a style", i))
-			assert.NotEmpty(t, beer.Description, fmt.Sprintf("Beer %d should have a description", i))
+			assert.NotEmpty(t, beer.Name, "Beer %d should have a name", i)
+			assert.NotEmpty(t, beer.BreweryName, "Beer %d should have a brewery name", i)
+			assert.NotEmpty(t, beer.Style, "Beer %d should have a style", i)
+			assert.NotEmpty(t, beer.Description, "Beer %d should have a description", i)
 
 			// Validate ABV range (reasonable beer ABV values)
-			assert.GreaterOrEqual(t, beer.ABV, 3.0, fmt.Sprintf("Beer %d ABV should be >= 3.0", i))
-			assert.LessOrEqual(t, beer.ABV, 10.0, fmt.Sprintf("Beer %d ABV should be <= 10.0", i))
+			assert.GreaterOrEqual(t, beer.ABV, 3.0, "Beer %d ABV should be >= 3.0", i)
+			assert.LessOrEqual(t, beer.ABV, 10.0, "Beer %d ABV should be <= 10.0", i)
 
 			// Validate IBU range (reasonable beer IBU values)
-			assert.GreaterOrEqual(t, beer.IBU, 10, fmt.Sprintf("Beer %d IBU should be >= 10", i))
-			assert.LessOrEqual(t, beer.IBU, 100, fmt.Sprintf("Beer %d IBU should be <= 100", i))
+			assert.GreaterOrEqual(t, beer.IBU, 10, "Beer %d IBU should be >= 10", i)
+			assert.LessOrEqual(t, beer.IBU, 100, "Beer %d IBU should be <= 100", i)
 
 			// Validate SRM range (reasonable beer color values)
-			assert.GreaterOrEqual(t, beer.SRM, 2.0, fmt.Sprintf("Beer %d SRM should be >= 2.0", i))
-			assert.LessOrEqual(t, beer.SRM, 40.0, fmt.Sprintf("Beer %d SRM should be <= 40.0", i))
+			assert.GreaterOrEqual(t, beer.SRM, 2.0, "Beer %d SRM should be >= 2.0", i)
+			assert.LessOrEqual(t, beer.SRM, 40.0, "Beer %d SRM should be <= 40.0", i)
 		}
 	})
 }
@@ -448,7 +451,7 @@ func TestGetSeedBeers_BreweryMapping(t *testing.T) {
 		// Then - verify each beer maps to a valid brewery
 		for i, beer := range beers {
 			assert.True(t, breweryNames[beer.BreweryName],
-				fmt.Sprintf("Beer %d brewery name '%s' should exist in seed breweries", i, beer.BreweryName))
+				"Beer %d brewery name '%s' should exist in seed breweries", i, beer.BreweryName)
 		}
 	})
 }
@@ -475,7 +478,7 @@ func TestGetBreweryIDs_HappyPath(t *testing.T) {
 		// Verify specific brewery mapping
 		devilsPeakID, exists := breweryIDs["Devil's Peak Brewing Company"]
 		assert.True(t, exists, "Should find Devil's Peak Brewing Company")
-		assert.Greater(t, devilsPeakID, 0, "Brewery ID should be positive")
+		assert.Positive(t, devilsPeakID, "Brewery ID should be positive")
 	})
 }
 
@@ -491,7 +494,7 @@ func TestGetBreweryIDs_EmptyDatabase(t *testing.T) {
 
 		// Then
 		require.NoError(t, err, "getBreweryIDs should not return an error")
-		assert.Len(t, breweryIDs, 0, "Should return empty map when no breweries exist")
+		assert.Empty(t, breweryIDs, "Should return empty map when no breweries exist")
 	})
 }
 
@@ -610,7 +613,6 @@ func TestSeedDatabase_ContextCancellation(t *testing.T) {
 
 		// When
 		err := seedBreweries(ctx, db)
-
 		// Then
 		// The behavior depends on the database driver and when the context is checked
 		// Some drivers may not immediately respect context cancellation
@@ -694,9 +696,9 @@ func TestSeedDatabase_FullIntegration(t *testing.T) {
 
 		for _, result := range results {
 			expectedBrewery, exists := expectedRelationships[result.BeerName]
-			assert.True(t, exists, fmt.Sprintf("Beer '%s' should be in expected relationships", result.BeerName))
+			assert.True(t, exists, "Beer '%s' should be in expected relationships", result.BeerName)
 			assert.Equal(t, expectedBrewery, result.BreweryName,
-				fmt.Sprintf("Beer '%s' should be associated with brewery '%s'", result.BeerName, expectedBrewery))
+				"Beer '%s' should be associated with brewery '%s'", result.BeerName, expectedBrewery)
 		}
 	})
 }

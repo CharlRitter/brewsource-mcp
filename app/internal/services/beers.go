@@ -2,13 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 )
 
-// BeerServiceInterface abstracts beer search for handler injection and testing
+// BeerServiceInterface abstracts beer search for handler injection and testing.
 type BeerServiceInterface interface {
 	SearchBeers(ctx context.Context, query BeerSearchQuery) ([]*BeerSearchResult, error)
 }
@@ -48,7 +48,7 @@ func NewBeerService(db *sqlx.DB, redisClient *redis.Client) *BeerService {
 }
 
 // SearchBeers performs a search for beers based on the provided criteria.
-// Requires a *sqlx.DB to be available (add as a field to BeerService if needed)
+// Requires a *sqlx.DB to be available (add as a field to BeerService if needed).
 func (s *BeerService) SearchBeers(ctx context.Context, query BeerSearchQuery) ([]*BeerSearchResult, error) {
 	q := `
 		  SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu
@@ -60,27 +60,27 @@ func (s *BeerService) SearchBeers(ctx context.Context, query BeerSearchQuery) ([
 	argIdx := 1
 
 	if query.Name != "" {
-		q += " AND b.name ILIKE $" + fmt.Sprint(argIdx)
+		q += " AND b.name ILIKE $" + strconv.Itoa(argIdx)
 		args = append(args, "%"+query.Name+"%")
 		argIdx++
 	}
 	if query.Style != "" {
-		q += " AND b.style ILIKE $" + fmt.Sprint(argIdx)
+		q += " AND b.style ILIKE $" + strconv.Itoa(argIdx)
 		args = append(args, "%"+query.Style+"%")
 		argIdx++
 	}
 	if query.Brewery != "" {
-		q += " AND br.name ILIKE $" + fmt.Sprint(argIdx)
+		q += " AND br.name ILIKE $" + strconv.Itoa(argIdx)
 		args = append(args, "%"+query.Brewery+"%")
 		argIdx++
 	}
 	if query.Location != "" {
-		q += " AND br.city ILIKE $" + fmt.Sprint(argIdx)
+		q += " AND br.city ILIKE $" + strconv.Itoa(argIdx)
 		args = append(args, "%"+query.Location+"%")
 		argIdx++
 	}
 	if query.Limit > 0 {
-		q += " LIMIT $" + fmt.Sprint(argIdx)
+		q += " LIMIT $" + strconv.Itoa(argIdx)
 		args = append(args, query.Limit)
 		argIdx++
 	}

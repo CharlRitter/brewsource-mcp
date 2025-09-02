@@ -22,8 +22,23 @@ func mockBJCPData() *BJCPData {
 				History:                   "An American craft beer innovation first developed in the mid-1970s.",
 				CharacteristicIngredients: "Pale ale malt (well-modified and suitable for single-temperature infusion mashing).",
 				StyleComparison:           "Stronger and more hoppy than an American Pale Ale.",
-				CommercialExamples:        []string{"Stone IPA", "Bell's Two Hearted IPA", "Russian River Blind Pig IPA"},
-				Vitals:                    Vitals{ABVMin: 5.5, ABVMax: 7.5, IBUMin: 40, IBUMax: 70, SRMMin: 6, SRMMax: 14, OGMin: 1.056, OGMax: 1.070, FGMin: 1.008, FGMax: 1.014},
+				CommercialExamples: []string{
+					"Stone IPA",
+					"Bell's Two Hearted IPA",
+					"Russian River Blind Pig IPA",
+				},
+				Vitals: Vitals{
+					ABVMin: 5.5,
+					ABVMax: 7.5,
+					IBUMin: 40,
+					IBUMax: 70,
+					SRMMin: 6,
+					SRMMax: 14,
+					OGMin:  1.056,
+					OGMax:  1.070,
+					FGMin:  1.008,
+					FGMax:  1.014,
+				},
 			},
 			"1A": {
 				Code:                      "1A",
@@ -39,7 +54,18 @@ func mockBJCPData() *BJCPData {
 				CharacteristicIngredients: "Two or six-row barley with high percentage (up to 40%) of rice or corn as adjuncts.",
 				StyleComparison:           "Lower in alcohol content and lighter in body than an American Lager.",
 				CommercialExamples:        []string{"Bud Light", "Coors Light", "Keystone Light"},
-				Vitals:                    Vitals{ABVMin: 2.8, ABVMax: 4.2, IBUMin: 8, IBUMax: 12, SRMMin: 2, SRMMax: 3, OGMin: 1.028, OGMax: 1.040, FGMin: 0.998, FGMax: 1.008},
+				Vitals: Vitals{
+					ABVMin: 2.8,
+					ABVMax: 4.2,
+					IBUMin: 8,
+					IBUMax: 12,
+					SRMMin: 2,
+					SRMMax: 3,
+					OGMin:  1.028,
+					OGMax:  1.040,
+					FGMin:  0.998,
+					FGMax:  1.008,
+				},
 			},
 			"9A": {
 				Code:                      "9A",
@@ -54,14 +80,40 @@ func mockBJCPData() *BJCPData {
 				History:                   "A Bavarian specialty first brewed in Munich by the monks of St. Francis of Paula.",
 				CharacteristicIngredients: "Pils and/or Vienna malt for pale versions.",
 				StyleComparison:           "A stronger, richer, more full-bodied version of either a Dunkles Bock or a Helles Bock.",
-				CommercialExamples:        []string{"Ayinger Celebrator", "Weihenstephaner Korbinian", "Spaten Optimator"},
-				Vitals:                    Vitals{ABVMin: 7.0, ABVMax: 10.0, IBUMin: 16, IBUMax: 26, SRMMin: 6, SRMMax: 25, OGMin: 1.072, OGMax: 1.112, FGMin: 1.016, FGMax: 1.024},
+				CommercialExamples: []string{
+					"Ayinger Celebrator",
+					"Weihenstephaner Korbinian",
+					"Spaten Optimator",
+				},
+				Vitals: Vitals{
+					ABVMin: 7.0,
+					ABVMax: 10.0,
+					IBUMin: 16,
+					IBUMax: 26,
+					SRMMin: 6,
+					SRMMax: 25,
+					OGMin:  1.072,
+					OGMax:  1.112,
+					FGMin:  1.016,
+					FGMax:  1.024,
+				},
 			},
 			"34A": {
 				Code:     "34A",
 				Name:     "Clone Beer",
 				Category: "Specialty Beer",
-				Vitals:   Vitals{ABVMin: 0.0, ABVMax: 15.0, IBUMin: 0, IBUMax: 200, SRMMin: 1, SRMMax: 40, OGMin: 1.000, OGMax: 1.200, FGMin: 0.990, FGMax: 1.030},
+				Vitals: Vitals{
+					ABVMin: 0.0,
+					ABVMax: 15.0,
+					IBUMin: 0,
+					IBUMax: 200,
+					SRMMin: 1,
+					SRMMax: 40,
+					OGMin:  1.000,
+					OGMax:  1.200,
+					FGMin:  0.990,
+					FGMax:  1.030,
+				},
 			},
 		},
 		Categories: []string{"IPA", "Standard American Beer", "Strong European Beer", "Specialty Beer"},
@@ -87,7 +139,7 @@ func mockEmptyBJCPData() *BJCPData {
 	}
 }
 
-// Test GetStyleByCode - Happy Path Cases
+// Test GetStyleByCode - Happy Path Cases.
 func TestGetStyleByCode_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -133,7 +185,7 @@ func TestGetStyleByCode_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetStyleByCode - Sad Path Cases
+// Test GetStyleByCode - Sad Path Cases.
 func TestGetStyleByCode_SadPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -167,7 +219,7 @@ func TestGetStyleByCode_SadPath(t *testing.T) {
 	}
 }
 
-// Test GetStyleByCode - Edge Cases
+// Test GetStyleByCode - Edge Cases.
 func TestGetStyleByCode_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
@@ -193,7 +245,7 @@ func TestGetStyleByCode_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test GetStyleByName - Happy Path Cases
+// Test GetStyleByName - Happy Path Cases.
 func TestGetStyleByName_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -231,7 +283,7 @@ func TestGetStyleByName_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetStyleByName - Sad Path Cases
+// Test GetStyleByName - Sad Path Cases.
 func TestGetStyleByName_SadPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -257,7 +309,7 @@ func TestGetStyleByName_SadPath(t *testing.T) {
 	}
 }
 
-// Test GetStyleByName - Boundary Cases
+// Test GetStyleByName - Boundary Cases.
 func TestGetStyleByName_BoundaryCase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -286,7 +338,7 @@ func TestGetStyleByName_BoundaryCase(t *testing.T) {
 	}
 }
 
-// Test GetStyleByName - Empty Database
+// Test GetStyleByName - Empty Database.
 func TestGetStyleByName_EmptyDatabase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
 
@@ -299,7 +351,7 @@ func TestGetStyleByName_EmptyDatabase(t *testing.T) {
 	}
 }
 
-// Test GetAllStyles - Happy Path
+// Test GetAllStyles - Happy Path.
 func TestGetAllStyles_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 	styles := svc.GetAllStyles()
@@ -317,7 +369,7 @@ func TestGetAllStyles_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetAllStyles - Empty Database
+// Test GetAllStyles - Empty Database.
 func TestGetAllStyles_EmptyDatabase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
 	styles := svc.GetAllStyles()
@@ -327,7 +379,7 @@ func TestGetAllStyles_EmptyDatabase(t *testing.T) {
 	}
 }
 
-// Test GetCategories - Happy Path
+// Test GetCategories - Happy Path.
 func TestGetCategories_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 	cats := svc.GetCategories()
@@ -338,7 +390,7 @@ func TestGetCategories_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetCategories - Empty Database
+// Test GetCategories - Empty Database.
 func TestGetCategories_EmptyDatabase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
 	cats := svc.GetCategories()
@@ -348,7 +400,7 @@ func TestGetCategories_EmptyDatabase(t *testing.T) {
 	}
 }
 
-// Test GetStylesByCategory - Happy Path
+// Test GetStylesByCategory - Happy Path.
 func TestGetStylesByCategory_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -382,7 +434,7 @@ func TestGetStylesByCategory_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetStylesByCategory - Sad Path
+// Test GetStylesByCategory - Sad Path.
 func TestGetStylesByCategory_SadPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
@@ -405,7 +457,7 @@ func TestGetStylesByCategory_SadPath(t *testing.T) {
 	}
 }
 
-// Test GetStylesByCategory - Empty Database
+// Test GetStylesByCategory - Empty Database.
 func TestGetStylesByCategory_EmptyDatabase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
 	styles := svc.GetStylesByCategory("IPA")
@@ -415,7 +467,7 @@ func TestGetStylesByCategory_EmptyDatabase(t *testing.T) {
 	}
 }
 
-// Test GetMetadata - Happy Path
+// Test GetMetadata - Happy Path.
 func TestGetMetadata_HappyPath(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 	meta := svc.GetMetadata()
@@ -434,7 +486,7 @@ func TestGetMetadata_HappyPath(t *testing.T) {
 	}
 }
 
-// Test GetMetadata - Empty Database
+// Test GetMetadata - Empty Database.
 func TestGetMetadata_EmptyDatabase(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
 	meta := svc.GetMetadata()
@@ -450,7 +502,7 @@ func TestGetMetadata_EmptyDatabase(t *testing.T) {
 	}
 }
 
-// Test Vitals Struct Validation
+// Test Vitals Struct Validation.
 func TestVitals_Validation(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 	style, err := svc.GetStyleByCode("21A")
@@ -495,7 +547,7 @@ func TestVitals_Validation(t *testing.T) {
 	}
 }
 
-// Test Service Constructor Edge Cases
+// Test Service Constructor Edge Cases.
 func TestNewBJCPServiceFromData_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
@@ -519,12 +571,12 @@ func TestNewBJCPServiceFromData_EdgeCases(t *testing.T) {
 	}
 }
 
-// Benchmark tests for performance requirements
+// Benchmark tests for performance requirements.
 func BenchmarkGetStyleByCode(b *testing.B) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := svc.GetStyleByCode("21A")
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
@@ -536,7 +588,7 @@ func BenchmarkGetStyleByName(b *testing.B) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := svc.GetStyleByName("American IPA")
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
@@ -548,7 +600,7 @@ func BenchmarkGetStylesByCategory(b *testing.B) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		styles := svc.GetStylesByCategory("IPA")
 		if len(styles) == 0 {
 			b.Fatal("expected styles to be returned")
@@ -556,14 +608,14 @@ func BenchmarkGetStylesByCategory(b *testing.B) {
 	}
 }
 
-// Test concurrent access for thread safety
+// Test concurrent access for thread safety.
 func TestConcurrentAccess(t *testing.T) {
 	svc := NewBJCPServiceFromData(mockBJCPData())
 
 	// Run multiple goroutines accessing the service simultaneously
 	done := make(chan bool, 10)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(id int) {
 			defer func() { done <- true }()
 
@@ -594,7 +646,7 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }

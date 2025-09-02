@@ -81,7 +81,7 @@ func (h *ToolHandlers) GetToolDefinitions() []mcp.Tool {
 	}
 }
 
-// isValidBJCPStyleCode validates BJCP style codes (e.g., 21A, 1B, 33C)
+// isValidBJCPStyleCode validates BJCP style codes (e.g., 21A, 1B, 33C).
 func isValidBJCPStyleCode(code string) bool {
 	matched, _ := regexp.MatchString(`^[0-9]{1,2}[A-Z]$`, code)
 	return matched

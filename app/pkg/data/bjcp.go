@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,8 +58,26 @@ type Metadata struct {
 
 // LoadBJCPData loads and parses the BJCP style data from file.
 func LoadBJCPData() (*BJCPData, error) {
-	dataPath := filepath.Join("data", "bjcp_2021_beer.json")
-	data, err := os.ReadFile(dataPath)
+	// Use a fixed, validated file path to prevent path traversal attacks
+	const bjcpFileName = "bjcp_2021_beer.json"
+	dataPath := filepath.Join("data", bjcpFileName)
+
+	// Validate that the resolved path is within the expected directory
+	absDataPath, err := filepath.Abs(dataPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve data file path: %w", err)
+	}
+
+	expectedDir, err := filepath.Abs("data")
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve data directory: %w", err)
+	}
+
+	if !strings.HasPrefix(absDataPath, expectedDir+string(filepath.Separator)) {
+		return nil, errors.New("invalid data file path: path traversal detected")
+	}
+
+	data, err := os.ReadFile(dataPath) // #nosec G304 - path is validated above
 	if err != nil {
 		return nil, fmt.Errorf("failed to read BJCP data file: %w", err)
 	}
@@ -111,7 +130,7 @@ func (s *BJCPService) GetStyleByName(name string) (*BJCPStyle, error) {
 
 	// Validate minimum search length for meaningful results
 	if len(trimmed) < 2 {
-		return nil, fmt.Errorf("search term too short: minimum 2 characters required")
+		return nil, errors.New("search term too short: minimum 2 characters required")
 	}
 
 	// Validate that search contains some alphabetic characters for beer style names
@@ -123,7 +142,7 @@ func (s *BJCPService) GetStyleByName(name string) (*BJCPStyle, error) {
 		}
 	}
 	if !hasAlpha {
-		return nil, fmt.Errorf("search term must contain alphabetic characters")
+		return nil, errors.New("search term must contain alphabetic characters")
 	}
 
 	nameLower := strings.ToLower(trimmed)
