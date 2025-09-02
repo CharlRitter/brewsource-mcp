@@ -8,6 +8,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// BeerServiceInterface abstracts beer search for handler injection and testing
+type BeerServiceInterface interface {
+	SearchBeers(ctx context.Context, query BeerSearchQuery) ([]*BeerSearchResult, error)
+}
+
 // BeerSearchQuery represents search parameters for beer lookup.
 type BeerSearchQuery struct {
 	Name     string
@@ -19,11 +24,13 @@ type BeerSearchQuery struct {
 
 // BeerSearchResult represents a beer search result.
 type BeerSearchResult struct {
-	ID      int
-	Name    string
-	Style   string
-	Brewery string
-	Country string
+	ID      int     `json:"id"`
+	Name    string  `json:"name"`
+	Style   string  `json:"style"`
+	Brewery string  `json:"brewery"`
+	Country string  `json:"country"`
+	ABV     float64 `json:"abv"`
+	IBU     int     `json:"ibu"`
 }
 
 // BeerService handles beer-related operations.
@@ -44,11 +51,11 @@ func NewBeerService(db *sqlx.DB, redisClient *redis.Client) *BeerService {
 // Requires a *sqlx.DB to be available (add as a field to BeerService if needed)
 func (s *BeerService) SearchBeers(ctx context.Context, query BeerSearchQuery) ([]*BeerSearchResult, error) {
 	q := `
-			   SELECT b.id, b.name, b.style, br.name as brewery, br.country
-			   FROM beers b
-			   JOIN breweries br ON b.brewery_id = br.id
-			   WHERE 1=1
-	   `
+		  SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu
+		  FROM beers b
+		  JOIN breweries br ON b.brewery_id = br.id
+		  WHERE 1=1
+	  `
 	args := []interface{}{}
 	argIdx := 1
 
@@ -87,7 +94,7 @@ func (s *BeerService) SearchBeers(ctx context.Context, query BeerSearchQuery) ([
 	results := []*BeerSearchResult{}
 	for rows.Next() {
 		var r BeerSearchResult
-		if err := rows.Scan(&r.ID, &r.Name, &r.Style, &r.Brewery, &r.Country); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Style, &r.Brewery, &r.Country, &r.ABV, &r.IBU); err != nil {
 			return nil, err
 		}
 		results = append(results, &r)

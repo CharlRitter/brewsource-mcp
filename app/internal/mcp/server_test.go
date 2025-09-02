@@ -88,7 +88,7 @@ func TestProcessMessage_Initialize(t *testing.T) {
 				Params:  tt.params,
 			}
 			data, _ := json.Marshal(msg)
-			resp := s.processMessage(context.Background(), data)
+			resp := s.ProcessMessage(context.Background(), data)
 
 			if tt.wantErr {
 				if resp == nil || resp.Error == nil {
@@ -143,18 +143,23 @@ func TestProcessMessage_ToolsList(t *testing.T) {
 			s := NewServer(&tt.mock, &mockResourceRegistry{})
 			msg := &Message{JSONRPC: "2.0", ID: "2", Method: "tools/list"}
 			data, _ := json.Marshal(msg)
-			resp := s.processMessage(context.Background(), data)
+			resp := s.ProcessMessage(context.Background(), data)
 
 			if resp == nil || resp.Result == nil {
 				t.Error("expected response for tools/list")
 			}
 
-			// Verify response structure
+			// Verify response structure - simulate JSON marshaling/unmarshaling
 			if resp != nil && resp.Result != nil {
-				result, ok := resp.Result.(map[string]interface{})
-				if !ok {
-					t.Error("expected map response type")
-					return
+				// Convert to JSON and back to simulate what happens in real usage
+				jsonData, err := json.Marshal(resp.Result)
+				if err != nil {
+					t.Fatalf("failed to marshal response: %v", err)
+				}
+
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonData, &result); err != nil {
+					t.Fatalf("failed to unmarshal response: %v", err)
 				}
 
 				tools, ok := result["tools"].([]interface{})
@@ -251,7 +256,7 @@ func TestProcessMessage_ToolsCall(t *testing.T) {
 				Params:  tt.params,
 			}
 			data, _ := json.Marshal(msg)
-			resp := s.processMessage(context.Background(), data)
+			resp := s.ProcessMessage(context.Background(), data)
 
 			if tt.wantErr {
 				if resp == nil || resp.Error == nil {
@@ -275,7 +280,7 @@ func TestProcessMessage_ResourcesList(t *testing.T) {
 	s := NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
 	msg := &Message{JSONRPC: "2.0", ID: "4", Method: "resources/list"}
 	data, _ := json.Marshal(msg)
-	resp := s.processMessage(context.Background(), data)
+	resp := s.ProcessMessage(context.Background(), data)
 	if resp == nil || resp.Result == nil {
 		t.Error("expected response for resources/list")
 	}
@@ -320,7 +325,7 @@ func TestProcessMessage_ResourcesRead(t *testing.T) {
 			params := map[string]interface{}{"uri": tt.uri}
 			msg := &Message{JSONRPC: "2.0", ID: "5", Method: "resources/read", Params: params}
 			data, _ := json.Marshal(msg)
-			resp := s.processMessage(context.Background(), data)
+			resp := s.ProcessMessage(context.Background(), data)
 
 			if tt.wantErr {
 				if resp == nil || resp.Error == nil {
@@ -471,7 +476,7 @@ func TestConcurrentToolCalls(t *testing.T) {
 				Params:  params,
 			}
 			data, _ := json.Marshal(msg)
-			resp := s.processMessage(context.Background(), data)
+			resp := s.ProcessMessage(context.Background(), data)
 			if resp == nil || resp.Result == nil {
 				t.Error("failed concurrent tool call")
 			}
@@ -489,7 +494,7 @@ func TestProcessMessage_MethodNotFound(t *testing.T) {
 	s := NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
 	msg := &Message{JSONRPC: "2.0", ID: "6", Method: "unknown/method"}
 	data, _ := json.Marshal(msg)
-	resp := s.processMessage(context.Background(), data)
+	resp := s.ProcessMessage(context.Background(), data)
 	if resp == nil || resp.Error == nil {
 		t.Error("expected error response for unknown method")
 	}
@@ -498,7 +503,7 @@ func TestProcessMessage_MethodNotFound(t *testing.T) {
 func TestProcessMessage_InvalidMessage(t *testing.T) {
 	s := NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
 	// Invalid JSON
-	resp := s.processMessage(context.Background(), []byte(`{"jsonrpc":"2.0",`))
+	resp := s.ProcessMessage(context.Background(), []byte(`{"jsonrpc":"2.0",`))
 	if resp == nil || resp.Error == nil {
 		t.Error("expected error response for invalid message")
 	}

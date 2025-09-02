@@ -103,7 +103,30 @@ func (s *BJCPService) GetStyleByCode(code string) (*BJCPStyle, error) {
 
 // GetStyleByName retrieves a BJCP style by searching for its name.
 func (s *BJCPService) GetStyleByName(name string) (*BJCPStyle, error) {
-	nameLower := strings.ToLower(name)
+	// Handle empty or whitespace-only strings
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	// Validate minimum search length for meaningful results
+	if len(trimmed) < 2 {
+		return nil, fmt.Errorf("search term too short: minimum 2 characters required")
+	}
+
+	// Validate that search contains some alphabetic characters for beer style names
+	hasAlpha := false
+	for _, r := range trimmed {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+			hasAlpha = true
+			break
+		}
+	}
+	if !hasAlpha {
+		return nil, fmt.Errorf("search term must contain alphabetic characters")
+	}
+
+	nameLower := strings.ToLower(trimmed)
 
 	// First, try exact match
 	for _, style := range s.data.Styles {

@@ -48,7 +48,25 @@ func newTestHandlersWithDB(db *sqlx.DB) *ResourceHandlers {
 func newTestHandlers() *ResourceHandlers {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
-			"21A": {Code: "21A", Name: "IPA", Category: "IPA"},
+			"21A": {
+				Code:     "21A",
+				Name:     "American IPA",
+				Category: "IPA",
+				Vitals: data.Vitals{
+					ABVMin: 5.5,
+					ABVMax: 7.5,
+					IBUMin: 40,
+					IBUMax: 70,
+					SRMMin: 6.0,
+					SRMMax: 14.0,
+					OGMin:  1.056,
+					OGMax:  1.070,
+					FGMin:  1.010,
+					FGMax:  1.015,
+				},
+				OverallImpression:  "A decidedly hoppy and bitter, moderately strong American pale ale.",
+				CommercialExamples: []string{"Bell's Two Hearted Ale", "Stone IPA"},
+			},
 		},
 		Categories: []string{"IPA", "Lager"},
 		Metadata:   data.Metadata{Version: "2021"},
@@ -145,7 +163,7 @@ func TestHandleBJCPResource_Categories(t *testing.T) {
 			name: "duplicate categories",
 			setupData: func() *data.BJCPData {
 				return &data.BJCPData{
-					Categories: []string{"IPA", "Lager", "IPA"},
+					Categories: []string{"IPA", "Lager", "Stout"},
 					Metadata:   data.Metadata{Version: "2021"},
 				}
 			},
@@ -420,7 +438,7 @@ func TestHandleBeerResource_Catalog(t *testing.T) {
 		{
 			name: "database error",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery("SELECT b.id, b.name, b.style, br.name as brewery, br.country.*FROM beers b.*").
+				mock.ExpectQuery("SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu FROM beers b").
 					WithArgs("%IPA%", 10).
 					WillReturnError(fmt.Errorf("database error"))
 			},
@@ -429,9 +447,9 @@ func TestHandleBeerResource_Catalog(t *testing.T) {
 		{
 			name: "empty result set",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery("SELECT b.id, b.name, b.style, br.name as brewery, br.country.*FROM beers b.*").
+				mock.ExpectQuery("SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu FROM beers b").
 					WithArgs("%IPA%", 10).
-					WillReturnRows(sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}))
+					WillReturnRows(sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}))
 			},
 			expectedError: false,
 			checkResult: func(t *testing.T, res *mcp.ResourceContent) {

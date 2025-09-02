@@ -215,7 +215,10 @@ func (h *ResourceHandlers) handleBreweryDirectory(ctx context.Context) (*mcp.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to get brewery directory sample: %w", err)
 	}
-
+	// Ensure sample_breweries is always an array, not null
+	if breweries == nil {
+		breweries = []*services.BrewerySearchResult{}
+	}
 	result := map[string]interface{}{
 		"description":      "Brewery Directory",
 		"sample_breweries": breweries,

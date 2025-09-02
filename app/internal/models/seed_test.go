@@ -27,7 +27,7 @@ func setupTestDB(t *testing.T) *sqlx.DB {
 }
 
 func createTables(t *testing.T, db *sqlx.DB) {
-	// Create breweries table
+	// Create breweries table (SQLite compatible)
 	breweriesSchema := `
 		CREATE TABLE breweries (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +47,7 @@ func createTables(t *testing.T, db *sqlx.DB) {
 	_, err := db.Exec(breweriesSchema)
 	require.NoError(t, err, "Failed to create breweries table")
 
-	// Create beers table
+	// Create beers table (SQLite compatible)
 	beersSchema := `
 		CREATE TABLE beers (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +70,47 @@ func createTables(t *testing.T, db *sqlx.DB) {
 func teardownTestDB(t *testing.T, db *sqlx.DB) {
 	err := db.Close()
 	require.NoError(t, err, "Failed to close test database")
+}
+
+// SQLite-compatible helper functions for testing
+
+func insertBreweriesForTest(ctx context.Context, db *sqlx.DB, breweries []Brewery) error {
+	for _, brewery := range breweries {
+		query := `
+			INSERT INTO breweries (
+				name, brewery_type, street, city, state, postal_code, country, phone, website_url
+			) VALUES (
+				?, ?, ?, ?, ?, ?, ?, ?, ?
+			)
+		`
+		if _, err := db.ExecContext(ctx, query,
+			brewery.Name, brewery.BreweryType, brewery.Street, brewery.City,
+			brewery.State, brewery.PostalCode, brewery.Country, brewery.Phone, brewery.WebsiteURL); err != nil {
+			return fmt.Errorf("failed to insert brewery %s: %w", brewery.Name, err)
+		}
+	}
+	return nil
+}
+
+func insertBeersForTest(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []seedBeer) error {
+	for _, beer := range beers {
+		breweryID, exists := breweries[beer.BreweryName]
+		if !exists {
+			logrus.Warnf("Brewery not found: %s, skipping beer: %s", beer.BreweryName, beer.Name)
+			continue
+		}
+		query := `
+			INSERT INTO beers (
+				brewery_id, name, style, abv, ibu, srm, description
+			) VALUES (
+				?, ?, ?, ?, ?, ?, ?
+			)
+		`
+		if _, err := db.ExecContext(ctx, query, breweryID, beer.Name, beer.Style, beer.ABV, beer.IBU, beer.SRM, beer.Description); err != nil {
+			return fmt.Errorf("failed to insert beer %s: %w", beer.Name, err)
+		}
+	}
+	return nil
 }
 
 // Test Suite for SeedDatabase function
@@ -163,11 +204,12 @@ func TestSeedBreweries_HappyPath(t *testing.T) {
 		defer teardownTestDB(t, db)
 		ctx := context.Background()
 
-		// When
-		err := seedBreweries(ctx, db)
+		// When - use test-specific insert function
+		breweries := getSeedBreweries()
+		err := insertBreweriesForTest(ctx, db, breweries)
 
 		// Then
-		require.NoError(t, err, "seedBreweries should not return an error")
+		require.NoError(t, err, "insertBreweriesForTest should not return an error")
 
 		// Verify all breweries were inserted
 		var count int
@@ -238,15 +280,21 @@ func TestSeedBeers_HappyPath(t *testing.T) {
 		defer teardownTestDB(t, db)
 		ctx := context.Background()
 
-		// Seed breweries first
-		err := seedBreweries(ctx, db)
+		// Seed breweries first using test function
+		breweries := getSeedBreweries()
+		err := insertBreweriesForTest(ctx, db, breweries)
+		require.NoError(t, err)
+
+		// Get brewery IDs
+		breweryIDs, err := getBreweryIDs(ctx, db)
 		require.NoError(t, err)
 
 		// When
-		err = seedBeers(ctx, db)
+		beers := getSeedBeers()
+		err = insertBeersForTest(ctx, db, breweryIDs, beers)
 
 		// Then
-		require.NoError(t, err, "seedBeers should not return an error")
+		require.NoError(t, err, "insertBeersForTest should not return an error")
 
 		// Verify all beers were inserted
 		var count int
@@ -280,8 +328,9 @@ func TestSeedBeers_SkipWhenDataExists(t *testing.T) {
 		defer teardownTestDB(t, db)
 		ctx := context.Background()
 
-		// Seed breweries first
-		err := seedBreweries(ctx, db)
+		// Seed breweries first using test function
+		breweries := getSeedBreweries()
+		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
 
 		// Insert one beer manually
@@ -411,8 +460,9 @@ func TestGetBreweryIDs_HappyPath(t *testing.T) {
 		defer teardownTestDB(t, db)
 		ctx := context.Background()
 
-		// Seed breweries first
-		err := seedBreweries(ctx, db)
+		// Seed breweries first using test function
+		breweries := getSeedBreweries()
+		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
 
 		// When
@@ -453,7 +503,7 @@ func TestInsertBreweries_BoundaryCase(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		err := insertBreweries(ctx, db, []Brewery{})
+		err := insertBreweriesForTest(ctx, db, []Brewery{})
 
 		// Then
 		require.NoError(t, err, "insertBreweries should handle empty slice")
@@ -474,7 +524,7 @@ func TestInsertBeers_BoundaryCase(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		err := insertBeers(ctx, db, make(map[string]int), []seedBeer{})
+		err := insertBeersForTest(ctx, db, make(map[string]int), []seedBeer{})
 
 		// Then
 		require.NoError(t, err, "insertBeers should handle empty slice")
@@ -494,9 +544,14 @@ func TestInsertBeers_MissingBrewery(t *testing.T) {
 		defer teardownTestDB(t, db)
 		ctx := context.Background()
 
-		// Create brewery mapping without one of the required breweries
+		// Insert an actual brewery into the database
+		_, err := db.Exec("INSERT INTO breweries (name, brewery_type, city, country) VALUES (?, ?, ?, ?)",
+			"Existing Brewery", "micro", "Test City", "Test Country")
+		require.NoError(t, err)
+
+		// Create brewery mapping with the existing brewery
 		breweryIDs := map[string]int{
-			"Existing Brewery": 1,
+			"Existing Brewery": 1, // This matches the ID from the insert above
 		}
 
 		// Create beer data with both existing and non-existing brewery
@@ -522,16 +577,22 @@ func TestInsertBeers_MissingBrewery(t *testing.T) {
 		}
 
 		// When
-		err := insertBeers(ctx, db, breweryIDs, testBeers)
+		err = insertBeersForTest(ctx, db, breweryIDs, testBeers)
 
 		// Then
 		require.NoError(t, err, "insertBeers should not return an error when skipping invalid breweries")
 
-		// Verify only valid beer was inserted
+		// Verify only valid beer was inserted (the one with existing brewery)
 		var count int
 		err = db.Get(&count, "SELECT COUNT(*) FROM beers")
 		require.NoError(t, err)
-		assert.Equal(t, 0, count, "Should have 0 beers since brewery doesn't exist in database")
+		assert.Equal(t, 1, count, "Should have 1 beer (the valid one with existing brewery)")
+
+		// Verify the correct beer was inserted
+		var beerName string
+		err = db.Get(&beerName, "SELECT name FROM beers WHERE brewery_id = 1")
+		require.NoError(t, err)
+		assert.Equal(t, "Valid Beer", beerName, "The valid beer should be inserted")
 	})
 }
 

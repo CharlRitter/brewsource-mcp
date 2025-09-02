@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -14,15 +15,15 @@ import (
 // ToolHandlers handles all MCP tool requests and implements ToolHandlerRegistry.
 type ToolHandlers struct {
 	bjcpData       *data.BJCPData
-	beerService    *services.BeerService
-	breweryService *services.BreweryService
+	beerService    services.BeerServiceInterface
+	breweryService services.BreweryServiceInterface
 }
 
 // NewToolHandlers creates a new instance of ToolHandlers.
 func NewToolHandlers(
 	bjcpData *data.BJCPData,
-	beerService *services.BeerService,
-	breweryService *services.BreweryService,
+	beerService services.BeerServiceInterface,
+	breweryService services.BreweryServiceInterface,
 ) *ToolHandlers {
 	return &ToolHandlers{
 		bjcpData:       bjcpData,
@@ -80,6 +81,12 @@ func (h *ToolHandlers) GetToolDefinitions() []mcp.Tool {
 	}
 }
 
+// isValidBJCPStyleCode validates BJCP style codes (e.g., 21A, 1B, 33C)
+func isValidBJCPStyleCode(code string) bool {
+	matched, _ := regexp.MatchString(`^[0-9]{1,2}[A-Z]$`, code)
+	return matched
+}
+
 // BJCPLookup handles BJCP style lookup functionality.
 func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 	styleCode, hasCode := args["style_code"].(string)
@@ -99,8 +106,16 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 	var err error
 	bjcpService := data.NewBJCPServiceFromData(h.bjcpData)
 	switch {
-	case hasCode && styleCode != "":
-		style, err = bjcpService.GetStyleByCode(strings.ToUpper(styleCode))
+	case hasCode:
+		styleCode = strings.ToUpper(styleCode)
+		if !isValidBJCPStyleCode(styleCode) {
+			return nil, &mcp.Error{
+				Code:    mcp.InvalidParams,
+				Message: "invalid style_code format",
+				Data:    map[string]interface{}{"style_code": styleCode},
+			}
+		}
+		style, err = bjcpService.GetStyleByCode(styleCode)
 	case hasName && styleName != "":
 		style, err = bjcpService.GetStyleByName(styleName)
 	default:
@@ -110,26 +125,24 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 		}
 	}
 	if err != nil {
-		return &mcp.ToolResult{
-			Content: []mcp.ToolContent{{
-				Type: "text",
-				Text: fmt.Sprintf("BJCP style not found for: %s%s",
-					func() string {
-						if hasCode {
-							return styleCode
-						} else {
-							return ""
-						}
-					}(),
-					func() string {
-						if hasName {
-							return styleName
-						} else {
-							return ""
-						}
-					}()),
-			}},
-		}, nil
+		return nil, &mcp.Error{
+			Code: mcp.InvalidParams,
+			Message: fmt.Sprintf("BJCP style not found for: %s%s",
+				func() string {
+					if hasCode {
+						return styleCode
+					} else {
+						return ""
+					}
+				}(),
+				func() string {
+					if hasName {
+						return styleName
+					} else {
+						return ""
+					}
+				}()),
+		}
 	}
 	v := style.Vitals
 	response := fmt.Sprintf(`**BJCP Style %s: %s**
@@ -203,16 +216,47 @@ func (h *ToolHandlers) SearchBeers(ctx context.Context, args map[string]interfac
 		query.Location = location
 	}
 
-	// Extract pagination parameters
+	// Validate limit
+	var limitSet bool
 	if limitFloat, ok1 := args["limit"].(float64); ok1 {
 		query.Limit = int(limitFloat)
-	} else if limitStr, ok2 := args["limit"].(string); ok2 {
+		limitSet = true
+	} else if limitInt, ok2 := args["limit"].(int); ok2 {
+		query.Limit = limitInt
+		limitSet = true
+	} else if limitStr, ok3 := args["limit"].(string); ok3 {
 		if limit, err := strconv.Atoi(limitStr); err == nil {
 			query.Limit = limit
+			limitSet = true
+		} else {
+			return nil, &mcp.Error{
+				Code:    mcp.InvalidParams,
+				Message: "limit must be an integer",
+			}
+		}
+	} else if args["limit"] != nil {
+		// Provided but not a valid type
+		return nil, &mcp.Error{
+			Code:    mcp.InvalidParams,
+			Message: "limit must be an integer",
 		}
 	}
-	if query.Limit <= 0 || query.Limit > 100 {
-		query.Limit = 20 // Default limit
+
+	// Default limit if not set
+	if !limitSet {
+		query.Limit = 20
+	}
+
+	// Validate limit range
+	if query.Limit <= 0 {
+		return nil, &mcp.Error{
+			Code:    mcp.InvalidParams,
+			Message: "limit must be greater than zero",
+		}
+	}
+	if query.Limit > 100 {
+		// Cap at maximum limit instead of returning error
+		query.Limit = 100
 	}
 
 	// Check if any search criteria provided

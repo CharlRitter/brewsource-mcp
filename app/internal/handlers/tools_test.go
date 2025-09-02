@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
+	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 )
 
 func TestToolDefinitions(t *testing.T) {
@@ -155,6 +156,35 @@ func TestSearchBeersTool_Definition(t *testing.T) {
 	}
 }
 
+// mockBeerService implements a mock for BeerService for testing
+type mockBeerService struct{}
+
+func (m *mockBeerService) SearchBeers(ctx context.Context, query services.BeerSearchQuery) ([]*services.BeerSearchResult, error) {
+	return []*services.BeerSearchResult{
+		{
+			Name:    "Test Beer",
+			Brewery: "Test Brewery",
+			Style:   "Test Style",
+		},
+	}, nil
+}
+
+// mockBreweryService implements a mock for BreweryService for testing
+type mockBreweryService struct{}
+
+func (m *mockBreweryService) SearchBreweries(ctx context.Context, query services.BrewerySearchQuery) ([]*services.BrewerySearchResult, error) {
+	return []*services.BrewerySearchResult{
+		{
+			ID:          1,
+			Name:        "Test Brewery",
+			BreweryType: "micro",
+			City:        "Test City",
+			State:       "Test State",
+			Country:     "Test Country",
+		},
+	}, nil
+}
+
 func TestSearchBeers_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -188,7 +218,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 				"name":  "Test Beer",
 				"limit": "invalid",
 			},
-			wantErr: false, // Should use default limit
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "limit must be an integer",
 		},
 		{
 			name: "negative limit",
@@ -196,7 +228,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 				"name":  "Test Beer",
 				"limit": -1,
 			},
-			wantErr: false, // Should use default limit
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "limit must be greater than zero",
 		},
 		{
 			name: "excessive limit",
@@ -219,7 +253,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		},
 	}
 
-	handlers := &ToolHandlers{}
+	// Create a mock service and properly initialize handlers
+	mockService := &mockBeerService{}
+	handlers := NewToolHandlers(nil, mockService, nil)
 	ctx := context.Background()
 
 	for _, tt := range tests {
@@ -374,7 +410,10 @@ func TestFindBreweries_EdgeCases(t *testing.T) {
 		},
 	}
 
-	handlers := &ToolHandlers{}
+	// Create mock services and properly initialize handlers
+	mockBeerService := &mockBeerService{}
+	mockBreweryService := &mockBreweryService{}
+	handlers := NewToolHandlers(nil, mockBeerService, mockBreweryService)
 	ctx := context.Background()
 
 	for _, tt := range tests {
@@ -568,7 +607,7 @@ func TestBJCPLookup_EdgeCases(t *testing.T) {
 			},
 			wantErr:     true,
 			errCode:     mcp.InvalidParams,
-			errContains: "style_code or style_name cannot be empty",
+			errContains: "invalid style_code format",
 		},
 		{
 			name: "empty style name",
@@ -586,7 +625,7 @@ func TestBJCPLookup_EdgeCases(t *testing.T) {
 			},
 			wantErr:     true,
 			errCode:     mcp.InvalidParams,
-			errContains: "style_code or style_name cannot be empty",
+			errContains: "either 'style_code' or 'style_name' parameter is required",
 		},
 		{
 			name: "both parameters empty",
@@ -596,14 +635,16 @@ func TestBJCPLookup_EdgeCases(t *testing.T) {
 			},
 			wantErr:     true,
 			errCode:     mcp.InvalidParams,
-			errContains: "style_code or style_name cannot be empty",
+			errContains: "invalid style_code format",
 		},
 		{
 			name: "extremely long style code",
 			args: map[string]interface{}{
 				"style_code": "999ZZZ",
 			},
-			wantErr: false, // Should not error but return "not found" message
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "invalid style_code format",
 		},
 	}
 

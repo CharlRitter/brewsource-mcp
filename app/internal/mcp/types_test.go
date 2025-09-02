@@ -704,8 +704,9 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 				t.Errorf("Unmarshaled JSONRPC = %q, want %q", unmarshaled.JSONRPC, tt.msg.JSONRPC)
 			}
 
-			if !reflect.DeepEqual(unmarshaled.ID, tt.msg.ID) {
-				t.Errorf("Unmarshaled ID = %v, want %v", unmarshaled.ID, tt.msg.ID)
+			// Compare IDs with type conversion for JSON numeric handling
+			if !compareIDs(unmarshaled.ID, tt.msg.ID) {
+				t.Errorf("Unmarshaled ID = %v (type %T), want %v (type %T)", unmarshaled.ID, unmarshaled.ID, tt.msg.ID, tt.msg.ID)
 			}
 
 			if unmarshaled.Method != tt.msg.Method {
@@ -857,4 +858,34 @@ func BenchmarkMessage_JSONMarshal(b *testing.B) {
 			b.Fatalf("json.Marshal() error: %v", err)
 		}
 	}
+}
+
+// compareIDs compares two ID values, handling JSON number type conversions
+func compareIDs(id1, id2 interface{}) bool {
+	if reflect.DeepEqual(id1, id2) {
+		return true
+	}
+
+	// Handle JSON number conversion (int -> float64)
+	switch v1 := id1.(type) {
+	case float64:
+		switch v2 := id2.(type) {
+		case int:
+			return v1 == float64(v2)
+		case int64:
+			return v1 == float64(v2)
+		}
+	case int:
+		switch v2 := id2.(type) {
+		case float64:
+			return float64(v1) == v2
+		}
+	case int64:
+		switch v2 := id2.(type) {
+		case float64:
+			return float64(v1) == v2
+		}
+	}
+
+	return false
 }

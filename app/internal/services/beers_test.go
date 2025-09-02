@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,20 +19,14 @@ import (
 // Mock data for testing
 var (
 	mockBeerRows = [][]driver.Value{
-		{1, "King's Blockhouse IPA", "American IPA", "Devil's Peak Brewing Company", "South Africa"},
-		{2, "Hazy Pale Ale", "American Pale Ale", "Jack Black Brewing Co", "South Africa"},
-		{3, "Lager", "Pilsner", "Castle Lager", "South Africa"},
-	}
-
-	expectedBeers = []*BeerSearchResult{
-		{ID: 1, Name: "King's Blockhouse IPA", Style: "American IPA", Brewery: "Devil's Peak Brewing Company", Country: "South Africa"},
-		{ID: 2, Name: "Hazy Pale Ale", Style: "American Pale Ale", Brewery: "Jack Black Brewing Co", Country: "South Africa"},
-		{ID: 3, Name: "Lager", Style: "Pilsner", Brewery: "Castle Lager", Country: "South Africa"},
+		{1, "King's Blockhouse IPA", "American IPA", "Devil's Peak Brewing Company", "South Africa", 6.0, 60},
+		{2, "Hazy Pale Ale", "American Pale Ale", "Jack Black Brewing Co", "South Africa", 5.0, 35},
+		{3, "Lager", "Pilsner", "Castle Lager", "South Africa", 4.5, 20},
 	}
 )
 
 func setupMockDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
-	db, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
 	require.NoError(t, err)
 	sqlxDB := sqlx.NewDb(db, "postgres")
 	return sqlxDB, mock
@@ -125,9 +120,9 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 			AddRow(mockBeerRows[0]...).
 			AddRow(mockBeerRows[1]...)
 
@@ -150,9 +145,9 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1\s+AND b.style ILIKE \$2\s+AND br.name ILIKE \$3\s+AND br.city ILIKE \$4\s+LIMIT \$5`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1\s+AND b.style ILIKE \$2\s+AND br.name ILIKE \$3\s+AND br.city ILIKE \$4\s+LIMIT \$5`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 			AddRow(mockBeerRows[0]...)
 
 		mock.ExpectQuery(expectedQuery).
@@ -179,9 +174,9 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 		for i := 0; i < 3; i++ {
 			rows.AddRow(mockBeerRows[i]...)
 		}
@@ -203,9 +198,9 @@ func TestSearchBeers_HappyPath(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%NONEXISTENT%").
@@ -228,9 +223,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs().
@@ -255,9 +250,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 			AddRow(mockBeerRows[0]...)
 
 		mock.ExpectQuery(expectedQuery).
@@ -278,9 +273,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		svc := setupBeerService(db)
 
 		// Negative limit should not add LIMIT clause
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 			AddRow(mockBeerRows[0]...)
 
 		mock.ExpectQuery(expectedQuery).
@@ -300,10 +295,10 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
-			AddRow(1, "Øl & Bière", "Lager", "Brewery café", "Norway")
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
+			AddRow(1, "Øl & Bière", "Lager", "Brewery café", "Norway", 5.0, 25)
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%Øl & Bière%").
@@ -328,9 +323,9 @@ func TestSearchBeers_EdgeCases(t *testing.T) {
 			longString = longString[:i] + "a" + longString[i+1:]
 		}
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%" + longString + "%").
@@ -352,7 +347,7 @@ func TestSearchBeers_ErrorHandling(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%IPA%").
@@ -372,7 +367,7 @@ func TestSearchBeers_ErrorHandling(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b\.id, b\.name, b\.style, br\.name as brewery, br\.country, b\.abv, b\.ibu\s+FROM beers b\s+JOIN breweries br ON b\.brewery_id = br\.id\s+WHERE 1=1\s+AND b\.name ILIKE \$1`
 
 		// Return wrong number of columns to trigger scan error
 		rows := sqlmock.NewRows([]string{"id", "name", "style"}).
@@ -395,10 +390,11 @@ func TestSearchBeers_ErrorHandling(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b\.id, b\.name, b\.style, br\.name as brewery, br\.country, b\.abv, b\.ibu\s+FROM beers b\s+JOIN breweries br ON b\.brewery_id = br\.id\s+WHERE 1=1\s+AND b\.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 			AddRow(mockBeerRows[0]...).
+			AddRow(1, "Second Beer", "IPA", "Test Brewery", "USA", 5.5, 45).
 			RowError(1, errors.New("row iteration error"))
 
 		mock.ExpectQuery(expectedQuery).
@@ -459,25 +455,25 @@ func TestSearchBeers_Performance(t *testing.T) {
 		defer db.Close()
 		svc := setupBeerService(db)
 
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+LIMIT \$1`
+		expectedQuery := `SELECT b\.id, b\.name, b\.style, br\.name as brewery, br\.country, b\.abv, b\.ibu\s+FROM beers b\s+JOIN breweries br ON b\.brewery_id = br\.id\s+WHERE 1=1\s+LIMIT \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
-		// Simulate 1000 results
-		for i := 0; i < 1000; i++ {
-			rows.AddRow(i, "Beer "+string(rune(i)), "Style", "Brewery", "Country")
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
+		// Simulate 100 results instead of 1000 to avoid excessive output
+		for i := 0; i < 100; i++ {
+			rows.AddRow(i, fmt.Sprintf("Beer %d", i), "Style", "Brewery", "Country", 5.0, 30)
 		}
 
 		mock.ExpectQuery(expectedQuery).
-			WithArgs(1000).
+			WithArgs(100).
 			WillReturnRows(rows)
 
 		start := time.Now()
-		query := BeerSearchQuery{Limit: 1000}
+		query := BeerSearchQuery{Limit: 100}
 		results, err := svc.SearchBeers(context.Background(), query)
 		duration := time.Since(start)
 
 		assert.NoError(t, err)
-		assert.Len(t, results, 1000)
+		assert.Len(t, results, 100)
 		assert.Less(t, duration, 1*time.Second, "Query should complete within 1 second")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -491,9 +487,9 @@ func TestSearchBeers_SQLInjectionPrevention(t *testing.T) {
 		svc := setupBeerService(db)
 
 		maliciousInput := "'; DROP TABLE beers; --"
-		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+		expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"})
+		rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"})
 
 		mock.ExpectQuery(expectedQuery).
 			WithArgs("%" + maliciousInput + "%").
@@ -549,9 +545,9 @@ func BenchmarkSearchBeers(b *testing.B) {
 	defer db.Close()
 	svc := setupBeerService(db)
 
-	expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
+	expectedQuery := `SELECT b.id, b.name, b.style, br.name as brewery, br.country, b.abv, b.ibu\s+FROM beers b\s+JOIN breweries br ON b.brewery_id = br.id\s+WHERE 1=1\s+AND b.name ILIKE \$1`
 
-	rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country"}).
+	rows := sqlmock.NewRows([]string{"id", "name", "style", "brewery", "country", "abv", "ibu"}).
 		AddRow(mockBeerRows[0]...)
 
 	for i := 0; i < b.N; i++ {

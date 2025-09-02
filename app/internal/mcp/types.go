@@ -226,6 +226,11 @@ func ObjectSchema(properties map[string]interface{}, required []string) map[stri
 // Validation helpers
 
 func ValidateMessage(data []byte) (*Message, error) {
+	// Check for null input first
+	if len(data) == 0 || string(data) == "null" {
+		return nil, NewMCPError(ParseError, "Invalid JSON", nil)
+	}
+
 	var msg Message
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, NewMCPError(ParseError, "Invalid JSON", nil)

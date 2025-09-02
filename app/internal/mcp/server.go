@@ -43,9 +43,13 @@ func NewServer(toolRegistry ToolHandlerRegistry, resourceRegistry ResourceHandle
 		},
 	}
 
-	// Register handlers
-	toolRegistry.RegisterToolHandlers(server)
-	resourceRegistry.RegisterResourceHandlers(server)
+	// Register handlers if registries are provided
+	if toolRegistry != nil {
+		toolRegistry.RegisterToolHandlers(server)
+	}
+	if resourceRegistry != nil {
+		resourceRegistry.RegisterResourceHandlers(server)
+	}
 
 	return server
 }
@@ -86,7 +90,7 @@ func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		response := s.processMessage(ctx, data)
+		response := s.ProcessMessage(ctx, data)
 		if response != nil {
 			responseData, merr := json.Marshal(response)
 			if merr != nil {
@@ -112,7 +116,7 @@ func (s *Server) HandleStdio() error {
 
 	for scanner.Scan() {
 		data := scanner.Bytes()
-		response := s.processMessage(ctx, data)
+		response := s.ProcessMessage(ctx, data)
 
 		if response != nil {
 			responseData, err := json.Marshal(response)
@@ -132,7 +136,7 @@ func (s *Server) HandleStdio() error {
 	return nil
 }
 
-func (s *Server) processMessage(ctx context.Context, data []byte) *Message {
+func (s *Server) ProcessMessage(ctx context.Context, data []byte) *Message {
 	logrus.Debugf("Processing message: %s", string(data))
 
 	msg, err := ValidateMessage(data)
@@ -249,6 +253,11 @@ func (s *Server) handleToolsCall(ctx context.Context, msg *Message) *Message {
 		}
 	}
 
+	// Check if tool name is provided
+	if req.Name == "" {
+		return NewErrorResponse(msg.ID, NewMCPError(InvalidParams, "Missing tool name", nil))
+	}
+
 	s.mu.RLock()
 	handler, exists := s.tools[req.Name]
 	s.mu.RUnlock()
@@ -305,6 +314,16 @@ func (s *Server) handleResourcesRead(ctx context.Context, msg *Message) *Message
 		}
 	}
 
+	// Check if URI is provided
+	if req.URI == "" {
+		return NewErrorResponse(msg.ID, NewMCPError(InvalidParams, "Missing resource URI", nil))
+	}
+
+	// Basic URI validation - check if it contains a scheme
+	if !isValidURI(req.URI) {
+		return NewErrorResponse(msg.ID, NewMCPError(InvalidParams, "Malformed resource URI", nil))
+	}
+
 	// Simple pattern matching for resources
 	var handler ResourceHandler
 	s.mu.RLock()
@@ -333,7 +352,14 @@ func (s *Server) handleResourcesRead(ctx context.Context, msg *Message) *Message
 	}
 
 	return NewResponse(msg.ID, map[string]interface{}{
-		"contents": []ResourceContent{*content},
+		"contents": []interface{}{
+			map[string]interface{}{
+				"uri":      content.URI,
+				"mimeType": content.MimeType,
+				"text":     content.Text,
+				"blob":     content.Blob,
+			},
+		},
 	})
 }
 
@@ -350,4 +376,33 @@ func matchesPattern(pattern, uri string) bool {
 	}
 
 	return pattern == uri
+}
+
+// isValidURI checks if a URI has a basic valid format (contains scheme)
+func isValidURI(uri string) bool {
+	// Very basic URI validation - just check for scheme
+	return len(uri) > 0 && len(uri) >= 3 &&
+		((uri[0] >= 'a' && uri[0] <= 'z') || (uri[0] >= 'A' && uri[0] <= 'Z')) &&
+		contains(uri, "://")
+}
+
+// contains checks if a string contains a substring
+func contains(s, substr string) bool {
+	return len(substr) <= len(s) && (substr == "" || indexOf(s, substr) >= 0)
+}
+
+// indexOf returns the index of the first instance of substr in s, or -1 if substr is not present in s
+func indexOf(s, substr string) int {
+	if len(substr) == 0 {
+		return 0
+	}
+	if len(substr) > len(s) {
+		return -1
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }

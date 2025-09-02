@@ -9,9 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
+	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
+	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
+
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/gorilla/websocket"
 )
+
+// mockBeerService implements a mock for BeerService for testing
+type mockBeerService struct{}
+
+func (m *mockBeerService) SearchBeers(ctx context.Context, query services.BeerSearchQuery) ([]*services.BeerSearchResult, error) {
+	return nil, nil
+}
 
 func TestMCP_Server_Integration(t *testing.T) {
 	// Test that basic MCP protocol messages work correctly
@@ -324,6 +335,19 @@ func TestMCP_BJCPLookup_Validation(t *testing.T) {
 		{"special characters", "21#A", true, mcp.InvalidParams},
 	}
 
+	// Use in-memory mock BJCP data for testing
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+			"21B": {Code: "21B", Name: "Specialty IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test", LastUpdated: "now", TotalStyles: 2},
+	}
+	toolHandlers := handlers.NewToolHandlers(bjcpData, nil, nil)
+	server := mcp.NewServer(toolHandlers, nil)
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toolCall := mcp.CallToolRequest{
@@ -332,18 +356,22 @@ func TestMCP_BJCPLookup_Validation(t *testing.T) {
 					"style_code": tt.styleCode,
 				},
 			}
-
 			msg := mcp.NewMessage("tools/call", toolCall)
 			data, err := json.Marshal(msg)
 			if err != nil {
 				t.Fatalf("Failed to marshal request: %v", err)
 			}
-
-			_, err = mcp.ValidateMessage(data)
-			if tt.expectError && err == nil {
-				t.Error("Expected error but got none")
-			} else if !tt.expectError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			response := server.ProcessMessage(ctx, data)
+			if tt.expectError {
+				if response.Error == nil {
+					t.Error("Expected error but got none")
+				} else if response.Error.Code != tt.errorCode {
+					t.Errorf("Expected error code %d, got %d", tt.errorCode, response.Error.Code)
+				}
+			} else {
+				if response.Error != nil {
+					t.Errorf("Unexpected error: %v", response.Error)
+				}
 			}
 		})
 	}
@@ -361,16 +389,22 @@ func TestMCP_BeerSearch_Validation(t *testing.T) {
 		{"empty query", "", nil, true, mcp.InvalidParams},
 		{"negative limit", "IPA", -1, true, mcp.InvalidParams},
 		{"zero limit", "IPA", 0, true, mcp.InvalidParams},
-		{"too large limit", "IPA", 1001, true, mcp.InvalidParams},
+		{"too large limit", "IPA", 1001, false, 0}, // Should cap at 100, not error
 		{"invalid limit type", "IPA", "ten", true, mcp.InvalidParams},
 	}
+
+	// Provide the mock to the tool handlers
+	mockService := &mockBeerService{}
+	toolHandlers := handlers.NewToolHandlers(nil, mockService, nil)
+	server := mcp.NewServer(toolHandlers, nil)
+	ctx := context.Background()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toolCall := mcp.CallToolRequest{
 				Name: "search_beers",
 				Arguments: map[string]interface{}{
-					"query": tt.query,
+					"name":  tt.query,
 					"limit": tt.limit,
 				},
 			}
@@ -381,11 +415,15 @@ func TestMCP_BeerSearch_Validation(t *testing.T) {
 				t.Fatalf("Failed to marshal request: %v", err)
 			}
 
-			_, err = mcp.ValidateMessage(data)
-			if tt.expectError && err == nil {
-				t.Error("Expected error but got none")
-			} else if !tt.expectError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			response := server.ProcessMessage(ctx, data)
+			if tt.expectError {
+				if response.Error == nil {
+					t.Error("Expected error but got none")
+				}
+			} else {
+				if response.Error != nil {
+					t.Errorf("Unexpected error: %v", response.Error)
+				}
 			}
 		})
 	}
