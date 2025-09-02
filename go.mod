@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/gorilla/websocket v1.5.3
-	github.com/jmoiron/sqlx v1.3.5
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/redis/go-redis/v9 v9.3.0
