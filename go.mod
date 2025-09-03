@@ -1,8 +1,8 @@
 module github.com/CharlRitter/brewsource-mcp
 
-go 1.24.0
+go 1.23.0
 
-toolchain go1.24.4
+toolchain go1.23.4
 
 require (
 	github.com/gorilla/websocket v1.5.3
@@ -15,7 +15,7 @@ require (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (

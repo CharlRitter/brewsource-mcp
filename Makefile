@@ -135,13 +135,13 @@ format:
 # Run golangci-lint for code quality checks
 lint:
 	@echo "🔍 Running linter..."
-	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run
+	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run
 	@echo "✅ Linting complete"
 
 # Run linter with automatic fixes applied
 lint-fix:
 	@echo "🔧 Running linter with auto-fix..."
-	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix
+	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --fix
 	@echo "✅ Linting with auto-fix complete"
 
 # Run security scans using gosec (Go Security Checker) and nancy (dependency scanner)
