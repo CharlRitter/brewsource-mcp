@@ -11,7 +11,118 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
+	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
 )
+
+// Test RegisterToolHandlers function
+func TestRegisterToolHandlers(t *testing.T) {
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	toolHandlers := handlers.NewToolHandlers(bjcpData, nil, nil)
+	server := mcp.NewServer(toolHandlers, nil)
+
+	// Call RegisterToolHandlers
+	toolHandlers.RegisterToolHandlers(server)
+
+	// Test that the handlers were registered by attempting to use them
+	ctx := context.Background()
+
+	// Test BJCP lookup tool
+	toolCall := mcp.CallToolRequest{
+		Name: "bjcp_lookup",
+		Arguments: map[string]interface{}{
+			"style_code": "21A",
+		},
+	}
+	msg := mcp.NewMessage("tools/call", toolCall)
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		t.Fatalf("Failed to marshal tool request: %v", err)
+	}
+
+	response := server.ProcessMessage(ctx, msgData)
+	if response.Error != nil {
+		t.Errorf("Expected successful tool call, got error: %v", response.Error)
+	}
+}
+
+// Test BJCPLookup with empty style_name
+func TestBJCPLookup_EmptyStyleName(t *testing.T) {
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	toolHandlers := handlers.NewToolHandlers(bjcpData, nil, nil)
+	server := mcp.NewServer(toolHandlers, nil)
+	ctx := context.Background()
+
+	// Test with empty style_name
+	toolCall := mcp.CallToolRequest{
+		Name: "bjcp_lookup",
+		Arguments: map[string]interface{}{
+			"style_name": "",
+		},
+	}
+	msg := mcp.NewMessage("tools/call", toolCall)
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		t.Fatalf("Failed to marshal tool request: %v", err)
+	}
+
+	response := server.ProcessMessage(ctx, msgData)
+	if response.Error == nil {
+		t.Error("Expected error for empty style_name, but got none")
+	}
+	if response.Error.Code != mcp.InvalidParams {
+		t.Errorf("Expected InvalidParams error code, got %d", response.Error.Code)
+	}
+}
+
+// Test parseLimit function indirectly through search_beers tool
+func TestParseLimit_DefaultCase(t *testing.T) {
+	// Use existing mock beer service from this file
+	bjcpData := &data.BJCPData{
+		Styles:     map[string]data.BJCPStyle{},
+		Categories: []string{},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	toolHandlers := handlers.NewToolHandlers(bjcpData, &mockBeerService{}, nil)
+	server := mcp.NewServer(toolHandlers, nil)
+	ctx := context.Background()
+
+	// Test with invalid limit type (boolean)
+	toolCall := mcp.CallToolRequest{
+		Name: "search_beers",
+		Arguments: map[string]interface{}{
+			"name":  "test",
+			"limit": true, // Invalid type - should trigger the default case
+		},
+	}
+	msg := mcp.NewMessage("tools/call", toolCall)
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		t.Fatalf("Failed to marshal tool request: %v", err)
+	}
+
+	response := server.ProcessMessage(ctx, msgData)
+	if response.Error == nil {
+		t.Error("Expected error for invalid limit type, but got none")
+	}
+	if response.Error.Code != mcp.InvalidParams {
+		t.Errorf("Expected InvalidParams error code, got %d", response.Error.Code)
+	}
+}
 
 func TestToolDefinitions(t *testing.T) {
 	// Test that we can create tool definitions without database
@@ -172,6 +283,16 @@ func (m *mockBeerService) SearchBeers(
 			Style:   "Test Style",
 		},
 	}, nil
+}
+
+// mockBeerServiceWithError implements a mock that returns errors for testing error paths
+type mockBeerServiceWithError struct{}
+
+func (m *mockBeerServiceWithError) SearchBeers(
+	_ context.Context,
+	_ services.BeerSearchQuery,
+) ([]*services.BeerSearchResult, error) {
+	return nil, errors.New("database connection failed")
 }
 
 // mockBreweryService implements a mock for BreweryService for testing.
@@ -690,6 +811,24 @@ func getBJCPLookupEdgeCaseTests() []struct {
 			errContains: "style_code or style_name cannot be empty",
 		},
 		{
+			name: "style not found by code",
+			args: map[string]interface{}{
+				"style_code": "99Z",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "BJCP style not found for: 99Z",
+		},
+		{
+			name: "style not found by name",
+			args: map[string]interface{}{
+				"style_name": "Nonexistent Style",
+			},
+			wantErr:     true,
+			errCode:     mcp.InvalidParams,
+			errContains: "BJCP style not found for: Nonexistent Style",
+		},
+		{
 			name: "invalid type for style_code",
 			args: map[string]interface{}{
 				"style_code": 123,
@@ -770,7 +909,16 @@ func validateBJCPLookupError(t *testing.T, err error, expectedCode int, expected
 func TestBJCPLookup_EdgeCases(t *testing.T) {
 	tests := getBJCPLookupEdgeCaseTests()
 
-	handlers := &handlers.ToolHandlers{}
+	// Use mock BJCP data for testing
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	handlers := handlers.NewToolHandlers(bjcpData, nil, nil)
 	ctx := context.Background()
 
 	for _, tt := range tests {
@@ -846,4 +994,57 @@ func TestStringFormatting_BrewingInfo(t *testing.T) {
 // Helper function to check if a string contains a substring.
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// Test SearchBeers error handling
+func TestSearchBeers_DatabaseError(t *testing.T) {
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	// Use the error mock to test error handling
+	errorService := &mockBeerServiceWithError{}
+	toolHandlers := handlers.NewToolHandlers(bjcpData, errorService, nil)
+
+	ctx := context.Background()
+	args := map[string]interface{}{
+		"name": "Test Beer",
+	}
+
+	result, err := toolHandlers.SearchBeers(ctx, args)
+
+	if result != nil {
+		t.Error("Expected nil result when database error occurs")
+	}
+
+	if err == nil {
+		t.Error("Expected error when database operation fails")
+	}
+
+	if !strings.Contains(err.Error(), "failed to search beers") {
+		t.Errorf("Expected specific error message, got: %v", err)
+	}
+}
+
+// Test parseLimit function indirectly through SearchBeers
+func TestParseLimit_StringError(t *testing.T) {
+	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
+
+	// Test through SearchBeers which uses parseLimit
+	result, err := toolHandlers.SearchBeers(context.Background(), map[string]interface{}{
+		"name":  "test",
+		"limit": "not-a-number",
+	})
+
+	if result != nil {
+		t.Error("Expected nil result for invalid limit")
+	}
+
+	if err == nil {
+		t.Error("Expected error for invalid limit")
+	}
 }

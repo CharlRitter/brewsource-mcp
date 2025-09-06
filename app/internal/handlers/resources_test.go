@@ -16,6 +16,39 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Test RegisterResourceHandlers function
+func TestRegisterResourceHandlers(t *testing.T) {
+	bjcpData := &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
+			"21A": {Code: "21A", Name: "American IPA", Category: "IPA"},
+		},
+		Categories: []string{"IPA"},
+		Metadata:   data.Metadata{Version: "2021", Source: "test"},
+	}
+
+	resourceHandlers := handlers.NewResourceHandlers(bjcpData, nil, nil)
+	server := mcp.NewServer(nil, resourceHandlers)
+
+	// Call RegisterResourceHandlers
+	resourceHandlers.RegisterResourceHandlers(server)
+
+	// Test that the handlers were registered by attempting to use them
+	ctx := context.Background()
+
+	// Test BJCP resource
+	bjcpRequest := mcp.ReadResourceRequest{URI: "bjcp://styles/21A"}
+	bjcpMsg := mcp.NewMessage("resources/read", bjcpRequest)
+	bjcpMsgData, err := json.Marshal(bjcpMsg)
+	if err != nil {
+		t.Fatalf("Failed to marshal BJCP request: %v", err)
+	}
+
+	bjcpResponse := server.ProcessMessage(ctx, bjcpMsgData)
+	if bjcpResponse.Error != nil {
+		t.Errorf("Expected successful BJCP resource read, got error: %v", bjcpResponse.Error)
+	}
+}
+
 func newTestHandlersWithDB(db *sqlx.DB) *handlers.ResourceHandlers {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
@@ -197,7 +230,7 @@ func TestHandleBJCPResource_Categories(t *testing.T) {
 			checkResult: checkEmptyCategoriesResult,
 		},
 		{
-			name:        "duplicate categories",
+			name:        "no duplicate categories",
 			setupData:   setupNormalCategoriesData,
 			checkResult: checkNoDuplicatesResult,
 		},

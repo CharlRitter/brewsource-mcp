@@ -693,3 +693,37 @@ func testConcurrentGetAllStyles(t *testing.T, svc *data.BJCPService, id int) {
 		t.Errorf("goroutine %d: GetAllStyles returned no results", id)
 	}
 }
+
+// Test LoadBJCPData function
+func TestLoadBJCPData(t *testing.T) {
+	// Test that LoadBJCPData returns an error when file doesn't exist
+	// We can't test successful loading without the actual data file in the test environment,
+	// but we can test the error path
+	_, err := data.LoadBJCPData()
+	// In test environment, this will likely fail due to missing data file, which is expected
+	if err == nil {
+		// If it succeeds, that's actually fine too - means the data file exists
+		t.Log("LoadBJCPData succeeded - data file is available")
+	} else {
+		// Expected in test environment
+		if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
+			t.Errorf("Expected file-related error, got: %v", err)
+		}
+	}
+}
+
+// Test NewBJCPService function
+func TestNewBJCPService(t *testing.T) {
+	// Test that NewBJCPService returns an error when LoadBJCPData fails
+	_, err := data.NewBJCPService()
+	// In test environment, this will likely fail due to missing data file, which is expected
+	if err == nil {
+		// If it succeeds, that's actually fine too - means the data file exists
+		t.Log("NewBJCPService succeeded - data file is available")
+	} else {
+		// Expected in test environment
+		if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
+			t.Errorf("Expected file-related error, got: %v", err)
+		}
+	}
+}

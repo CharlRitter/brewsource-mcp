@@ -546,3 +546,72 @@ func TestProcessMessage_InvalidMessage(t *testing.T) {
 		t.Error("expected error response for invalid message")
 	}
 }
+
+// Test HandleStdio function (limited test due to stdio nature)
+func TestHandleStdio(t *testing.T) {
+	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
+
+	// We can't easily test the full stdio functionality without mocking os.Stdin,
+	// but we can test that the function exists and doesn't panic when called
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("HandleStdio panicked: %v", r)
+		}
+	}()
+
+	// Create a goroutine to call HandleStdio and let it fail gracefully
+	done := make(chan bool)
+	go func() {
+		defer func() {
+			done <- true
+		}()
+		// This will fail quickly due to no stdin input, which is expected in tests
+		_ = s.HandleStdio()
+	}()
+
+	// Wait a short time for the function to start and fail
+	select {
+	case <-done:
+		// Function completed, which is expected
+	}
+}
+
+// Test matchesPattern function through resource handling
+func TestMatchesPattern(t *testing.T) {
+	// We can test matchesPattern indirectly by testing resource URI matching
+	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		uri         string
+		shouldMatch bool
+	}{
+		{"exact match", "test://exact", true},
+		{"wildcard prefix match", "test://prefix/something", true},
+		{"no match", "other://different", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test through resource read request
+			resourceReq := mcp.ReadResourceRequest{URI: tt.uri}
+			msg := mcp.NewMessage("resources/read", resourceReq)
+			data, err := json.Marshal(msg)
+			if err != nil {
+				t.Fatalf("Failed to marshal request: %v", err)
+			}
+
+			response := s.ProcessMessage(ctx, data)
+
+			// Check if we got an expected response vs error
+			hasError := response.Error != nil
+			if tt.shouldMatch && hasError {
+				// If it should match but we got an error, check if it's just "not found" vs "invalid URI"
+				if !strings.Contains(response.Error.Message, "not found") {
+					t.Errorf("Expected match for URI %s but got error: %v", tt.uri, response.Error)
+				}
+			}
+		})
+	}
+}

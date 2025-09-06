@@ -423,12 +423,6 @@ func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 	assert.Equal(t, "South Africa", brewery.Country)
 	assert.Equal(t, "+27 21 200 5818", brewery.Phone)
 	assert.Equal(t, "https://www.devilspeak.beer", brewery.Website)
-	assert.Equal(t, "Woodstock", brewery.City)
-	assert.Equal(t, "Western Cape", brewery.State)
-	assert.Equal(t, "South Africa", brewery.Country)
-	assert.Equal(t, "micro", brewery.BreweryType)
-	assert.Equal(t, "+27 21 200 5818", brewery.Phone)
-	assert.Equal(t, "https://www.devilspeak.beer", brewery.Website)
 }
 
 // Happy Path Tests.
