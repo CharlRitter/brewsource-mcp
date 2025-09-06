@@ -145,6 +145,20 @@ jobs:
     name: Docker Build and Test
     runs-on: ubuntu-latest
     needs: [lint, test, build]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: brewsource_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -167,16 +181,24 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
+          load: true
           tags: brewsource-mcp:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Test Docker image
         run: |
+          # Wait for PostgreSQL to be ready
+          until pg_isready -h localhost -p 5432 -U testuser; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
           # Start container in background
           docker run -d --name brewsource-test \
             -p 8080:8080 \
-            -e DATABASE_URL=sqlite3://:memory: \
+            --network host \
+            -e DATABASE_URL=postgresql://testuser:testpassword@localhost:5432/brewsource_test?sslmode=disable \
             -e LOG_LEVEL=info \
             brewsource-mcp:test
 
