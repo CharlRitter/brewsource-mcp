@@ -1479,16 +1479,21 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	results := make(chan error, numRoutines)
 	var wg sync.WaitGroup
 
-	for i := 0; i < numRoutines; i++ {
+	for i := range numRoutines {
 		wg.Add(1)
 		go func(routineID int) {
 			defer wg.Done()
 
-			// Create separate mock for each goroutine
-			db, mock := setupMockDB(t)
+			// Create separate mock for each goroutine - direct sqlmock creation to avoid testify issues
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				results <- fmt.Errorf("failed to create mock: %w", err)
+				return
+			}
 			defer db.Close()
 
-			service := setupBreweryService(db)
+			sqlxDB := sqlx.NewDb(db, "sqlmock")
+			service := services.NewBreweryService(sqlxDB, nil)
 
 			rows := sqlmock.NewRows([]string{
 				"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
@@ -1510,14 +1515,14 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			_, err := service.SearchBreweries(ctx, query)
-			if err != nil {
-				results <- err
+			_, searchErr := service.SearchBreweries(ctx, query)
+			if searchErr != nil {
+				results <- searchErr
 				return
 			}
 
-			if err := mock.ExpectationsWereMet(); err != nil {
-				results <- err
+			if mockErr := mock.ExpectationsWereMet(); mockErr != nil {
+				results <- mockErr
 				return
 			}
 
