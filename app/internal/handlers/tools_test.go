@@ -14,7 +14,7 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
 )
 
-// Test RegisterToolHandlers function
+// Test RegisterToolHandlers function.
 func TestRegisterToolHandlers(t *testing.T) {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
@@ -52,7 +52,7 @@ func TestRegisterToolHandlers(t *testing.T) {
 	}
 }
 
-// Test BJCPLookup with empty style_name
+// Test BJCPLookup with empty style_name.
 func TestBJCPLookup_EmptyStyleName(t *testing.T) {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
@@ -88,7 +88,7 @@ func TestBJCPLookup_EmptyStyleName(t *testing.T) {
 	}
 }
 
-// Test parseLimit function indirectly through search_beers tool
+// Test parseLimit function indirectly through search_beers tool.
 func TestParseLimit_DefaultCase(t *testing.T) {
 	// Use existing mock beer service from this file
 	bjcpData := &data.BJCPData{
@@ -285,7 +285,7 @@ func (m *mockBeerService) SearchBeers(
 	}, nil
 }
 
-// mockBeerServiceWithError implements a mock that returns errors for testing error paths
+// mockBeerServiceWithError implements a mock that returns errors for testing error paths.
 type mockBeerServiceWithError struct{}
 
 func (m *mockBeerServiceWithError) SearchBeers(
@@ -996,7 +996,7 @@ func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
-// Test SearchBeers error handling
+// Test SearchBeers error handling.
 func TestSearchBeers_DatabaseError(t *testing.T) {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
@@ -1030,7 +1030,7 @@ func TestSearchBeers_DatabaseError(t *testing.T) {
 	}
 }
 
-// Test parseLimit function indirectly through SearchBeers
+// Test parseLimit function indirectly through SearchBeers.
 func TestParseLimit_StringError(t *testing.T) {
 	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
 

@@ -694,7 +694,7 @@ func testConcurrentGetAllStyles(t *testing.T, svc *data.BJCPService, id int) {
 	}
 }
 
-// Test LoadBJCPData function
+// Test LoadBJCPData function.
 func TestLoadBJCPData(t *testing.T) {
 	// Test that LoadBJCPData returns an error when file doesn't exist
 	// We can't test successful loading without the actual data file in the test environment,
@@ -704,15 +704,13 @@ func TestLoadBJCPData(t *testing.T) {
 	if err == nil {
 		// If it succeeds, that's actually fine too - means the data file exists
 		t.Log("LoadBJCPData succeeded - data file is available")
-	} else {
+	} else if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
 		// Expected in test environment
-		if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
-			t.Errorf("Expected file-related error, got: %v", err)
-		}
+		t.Errorf("Expected file-related error, got: %v", err)
 	}
 }
 
-// Test NewBJCPService function
+// Test NewBJCPService function.
 func TestNewBJCPService(t *testing.T) {
 	// Test that NewBJCPService returns an error when LoadBJCPData fails
 	_, err := data.NewBJCPService()
@@ -720,10 +718,8 @@ func TestNewBJCPService(t *testing.T) {
 	if err == nil {
 		// If it succeeds, that's actually fine too - means the data file exists
 		t.Log("NewBJCPService succeeded - data file is available")
-	} else {
+	} else if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
 		// Expected in test environment
-		if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
-			t.Errorf("Expected file-related error, got: %v", err)
-		}
+		t.Errorf("Expected file-related error, got: %v", err)
 	}
 }

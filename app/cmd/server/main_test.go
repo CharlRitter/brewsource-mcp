@@ -570,13 +570,13 @@ func TestMCP_Performance(t *testing.T) {
 	}
 }
 
-// Test initDatabase function
+// Test initDatabase function.
 func TestInitDatabase(t *testing.T) {
 	// Test missing DATABASE_URL
 	originalURL := os.Getenv("DATABASE_URL")
 	defer func() {
 		if originalURL != "" {
-			os.Setenv("DATABASE_URL", originalURL)
+			t.Setenv("DATABASE_URL", originalURL)
 		} else {
 			os.Unsetenv("DATABASE_URL")
 		}
@@ -592,14 +592,14 @@ func TestInitDatabase(t *testing.T) {
 	}
 
 	// Test invalid database URL
-	os.Setenv("DATABASE_URL", "invalid://url")
+	t.Setenv("DATABASE_URL", "invalid://url")
 	_, err = initDatabase()
 	if err == nil {
 		t.Error("Expected error for invalid database URL")
 	}
 }
 
-// Test initRedis function
+// Test initRedis function.
 func TestInitRedis(t *testing.T) {
 	// Test with invalid Redis URL
 	client := initRedis("invalid://url")
@@ -614,7 +614,7 @@ func TestInitRedis(t *testing.T) {
 	_ = client // Suppress unused variable warning
 }
 
-// Test runStdioServer function (limited test due to stdio nature)
+// Test runStdioServer function (limited test due to stdio nature).
 func TestRunStdioServer(t *testing.T) {
 	// Create a mock server
 	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
@@ -651,7 +651,7 @@ func TestRunStdioServer(t *testing.T) {
 	}
 }
 
-// Test runWebSocketServer function
+// Test runWebSocketServer function.
 func TestRunWebSocketServer(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping WebSocket server test in short mode")
@@ -691,31 +691,38 @@ func TestRunWebSocketServer(t *testing.T) {
 	}
 }
 
-// Test main function scenarios (limited due to log.Fatalf calls)
+// Test main function scenarios (limited due to log.Fatalf calls).
 func TestMainFunctionScenarios(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping main function test in short mode")
 	}
 
 	// Save original args and environment
-	originalArgs := os.Args
+	originalArgs := make([]string, len(os.Args))
+	copy(originalArgs, os.Args)
 	originalEnv := os.Environ()
 
 	defer func() {
-		os.Args = originalArgs
+		// Restore original args
+		argsSlice := make([]string, len(originalArgs))
+		copy(argsSlice, originalArgs)
+		os.Args = argsSlice //nolint:reassign // Legitimate test restoration
 		// Restore environment
 		os.Clearenv()
 		for _, env := range originalEnv {
 			parts := strings.SplitN(env, "=", 2)
 			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
+				t.Setenv(parts[0], parts[1])
 			}
 		}
 	}()
 
 	// Test invalid mode (will cause log.Fatalf, so we can't test directly)
 	// But we can test the flag parsing logic
-	os.Args = []string{"cmd", "-mode=invalid"}
+	testArgs := []string{"cmd", "-mode=invalid"}
+	argsSlice := make([]string, len(testArgs))
+	copy(argsSlice, testArgs)
+	os.Args = argsSlice //nolint:reassign // Legitimate test setup
 
 	// The main function will call log.Fatalf for invalid modes,
 	// so we can't test this path completely without more complex mocking

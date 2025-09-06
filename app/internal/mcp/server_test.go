@@ -547,7 +547,7 @@ func TestProcessMessage_InvalidMessage(t *testing.T) {
 	}
 }
 
-// Test HandleStdio function (limited test due to stdio nature)
+// Test HandleStdio function (limited test due to stdio nature).
 func TestHandleStdio(t *testing.T) {
 	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
 
@@ -570,13 +570,11 @@ func TestHandleStdio(t *testing.T) {
 	}()
 
 	// Wait a short time for the function to start and fail
-	select {
-	case <-done:
-		// Function completed, which is expected
-	}
+	<-done
+	// Function completed, which is expected
 }
 
-// Test matchesPattern function through resource handling
+// Test matchesPattern function through resource handling.
 func TestMatchesPattern(t *testing.T) {
 	// We can test matchesPattern indirectly by testing resource URI matching
 	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})

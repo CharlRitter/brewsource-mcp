@@ -16,7 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Test RegisterResourceHandlers function
+// Test RegisterResourceHandlers function.
 func TestRegisterResourceHandlers(t *testing.T) {
 	bjcpData := &data.BJCPData{
 		Styles: map[string]data.BJCPStyle{
