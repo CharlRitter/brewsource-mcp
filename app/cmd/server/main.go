@@ -23,6 +23,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// Database connection pool settings.
+	maxOpenConns    = 25
+	maxIdleConns    = 5
+	connMaxLifetime = 5 * time.Minute
+
+	// Network timeout settings.
+	redisTimeout    = 5 * time.Second
+	readTimeout     = 30 * time.Second
+	writeTimeout    = 30 * time.Second
+	idleTimeout     = 120 * time.Second
+	shutdownTimeout = 30 * time.Second
+)
+
 func main() {
 	// Command line flags
 	var (
@@ -42,18 +56,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close()
 
 	// Initialize Redis (optional)
 	var redisClient *redis.Client
 	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
 		redisClient = initRedis(redisURL)
-		defer redisClient.Close()
+	}
+
+	// Cleanup function for early exits and normal execution
+	cleanup := func() {
+		if redisClient != nil {
+			if closeErr := redisClient.Close(); closeErr != nil {
+				logrus.Warnf("Failed to close Redis client: %v", closeErr)
+			}
+		}
+		if closeErr := db.Close(); closeErr != nil {
+			logrus.Warnf("Failed to close database: %v", closeErr)
+		}
 	}
 
 	// Load BJCP data
 	bjcpData, err := data.LoadBJCPData()
 	if err != nil {
+		cleanup()
 		log.Fatalf("Failed to load BJCP data: %v", err)
 	}
 
@@ -69,13 +94,22 @@ func main() {
 	mcpServer := mcp.NewServer(toolHandlers, resourceHandlers)
 
 	// Run server based on mode
+	var shouldDefer bool
 	switch *mode {
 	case "websocket":
+		shouldDefer = true
 		runWebSocketServer(mcpServer, *port)
 	case "stdio":
+		shouldDefer = true
 		runStdioServer(mcpServer)
 	default:
+		cleanup()
 		log.Fatalf("Unknown mode: %s. Use 'websocket' or 'stdio'", *mode)
+	}
+
+	// Cleanup for normal execution paths
+	if shouldDefer {
+		cleanup()
 	}
 }
 
@@ -91,18 +125,18 @@ func initDatabase() (*sqlx.DB, error) {
 	}
 
 	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(connMaxLifetime)
 
 	// Auto-migrate database schema
-	if err := models.MigrateDatabase(db); err != nil {
-		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	if migrationErr := models.MigrateDatabase(db); migrationErr != nil {
+		return nil, fmt.Errorf("failed to migrate database: %w", migrationErr)
 	}
 
 	// Seed database with initial data
-	if err := models.SeedDatabase(db); err != nil {
-		logrus.Warnf("Failed to seed database: %v", err)
+	if seedErr := models.SeedDatabase(db); seedErr != nil {
+		logrus.Warnf("Failed to seed database: %v", seedErr)
 		// Don't fail startup if seeding fails
 	}
 
@@ -120,11 +154,11 @@ func initRedis(redisURL string) *redis.Client {
 	client := redis.NewClient(opts)
 
 	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
 	defer cancel()
 
-	if err := client.Ping(ctx).Err(); err != nil {
-		logrus.Warnf("Failed to connect to Redis: %v", err)
+	if pingErr := client.Ping(ctx).Err(); pingErr != nil {
+		logrus.Warnf("Failed to connect to Redis: %v", pingErr)
 		return nil
 	}
 
@@ -137,7 +171,7 @@ func runWebSocketServer(mcpServer *mcp.Server, port string) {
 	mux := http.NewServeMux()
 
 	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status": "healthy", "service": "brewsource-mcp", "version": "1.0.0"}`)
@@ -170,9 +204,9 @@ func runWebSocketServer(mcpServer *mcp.Server, port string) {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	// Graceful shutdown
@@ -182,7 +216,7 @@ func runWebSocketServer(mcpServer *mcp.Server, port string) {
 		<-sigChan
 
 		logrus.Info("Shutting down server...")
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {

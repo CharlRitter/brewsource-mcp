@@ -24,6 +24,13 @@ type Error struct {
 }
 
 // NewMCPError constructs a new MCP Error.
+func NewMCPError(code int, message string, data interface{}) *Error {
+	return &Error{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	}
+}
 
 // Error implements the error interface.
 func (e *Error) Error() string {
@@ -168,14 +175,6 @@ func NewErrorResult(message string) *ToolResult {
 	}
 }
 
-func NewMCPError(code int, message string, data interface{}) *Error {
-	return &Error{
-		Code:    code,
-		Message: message,
-		Data:    data,
-	}
-}
-
 // Message helpers
 
 func NewMessage(method string, params interface{}) *Message {
@@ -204,7 +203,7 @@ func NewErrorResponse(id interface{}, err *Error) *Message {
 
 // JSON Schema helpers for tool input validation
 
-func StringSchema(description string, required bool) map[string]interface{} {
+func StringSchema(description string, _ bool) map[string]interface{} {
 	schema := map[string]interface{}{
 		"type":        "string",
 		"description": description,

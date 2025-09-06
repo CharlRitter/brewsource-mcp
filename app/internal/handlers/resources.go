@@ -11,6 +11,11 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
 )
 
+const (
+	// resourceSampleLimit is the default number of sample items to return for resource catalogs.
+	resourceSampleLimit = 10
+)
+
 // ResourceHandlers handles all MCP resource requests and implements ResourceHandlerRegistry.
 type ResourceHandlers struct {
 	bjcpService    *data.BJCPService
@@ -110,7 +115,7 @@ func (h *ResourceHandlers) HandleBreweryResource(ctx context.Context, uri string
 	}
 }
 
-func (h *ResourceHandlers) handleAllBJCPStyles(ctx context.Context) (*mcp.ResourceContent, error) {
+func (h *ResourceHandlers) handleAllBJCPStyles(_ context.Context) (*mcp.ResourceContent, error) {
 	// For now, return a summary of available styles
 	categories := h.bjcpService.GetCategories()
 	result := map[string]interface{}{
@@ -134,7 +139,7 @@ func (h *ResourceHandlers) handleAllBJCPStyles(ctx context.Context) (*mcp.Resour
 	}, nil
 }
 
-func (h *ResourceHandlers) handleBJCPCategories(ctx context.Context) (*mcp.ResourceContent, error) {
+func (h *ResourceHandlers) handleBJCPCategories(_ context.Context) (*mcp.ResourceContent, error) {
 	categories := h.bjcpService.GetCategories()
 	result := map[string]interface{}{
 		"categories": categories,
@@ -151,7 +156,7 @@ func (h *ResourceHandlers) handleBJCPCategories(ctx context.Context) (*mcp.Resou
 	}, nil
 }
 
-func (h *ResourceHandlers) handleBJCPStyleDetail(ctx context.Context, styleCode string) (*mcp.ResourceContent, error) {
+func (h *ResourceHandlers) handleBJCPStyleDetail(_ context.Context, styleCode string) (*mcp.ResourceContent, error) {
 	style, err := h.bjcpService.GetStyleByCode(styleCode)
 	if err != nil {
 		return nil, mcp.NewMCPError(mcp.MethodNotFound, fmt.Sprintf("BJCP style not found: %s", styleCode), nil)
@@ -170,7 +175,7 @@ func (h *ResourceHandlers) handleBJCPStyleDetail(ctx context.Context, styleCode 
 func (h *ResourceHandlers) handleBeerCatalog(ctx context.Context) (*mcp.ResourceContent, error) {
 	// Return a sample of beers to show the catalog structure
 	query := services.BeerSearchQuery{
-		Limit: 10,
+		Limit: resourceSampleLimit,
 	}
 
 	// Since we need at least one search parameter, let's search for a common style
@@ -205,7 +210,7 @@ func (h *ResourceHandlers) handleBeerCatalog(ctx context.Context) (*mcp.Resource
 func (h *ResourceHandlers) handleBreweryDirectory(ctx context.Context) (*mcp.ResourceContent, error) {
 	// Return a sample of breweries to show the directory structure
 	query := services.BrewerySearchQuery{
-		Limit: 10,
+		Limit: resourceSampleLimit,
 	}
 
 	// Search for breweries in a popular beer region

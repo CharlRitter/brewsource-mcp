@@ -45,15 +45,15 @@ func seedBreweries(ctx context.Context, db *sqlx.DB) error {
 		return nil
 	}
 	logrus.Info("Seeding breweries...")
-	breweries := getSeedBreweries()
-	if berr := insertBreweries(ctx, db, breweries); berr != nil {
-		return berr
+	breweries := GetSeedBreweries()
+	if insertErr := insertBreweries(ctx, db, breweries); insertErr != nil {
+		return insertErr
 	}
 	logrus.Infof("Seeded %d breweries", len(breweries))
 	return nil
 }
 
-func getSeedBreweries() []Brewery {
+func GetSeedBreweries() []Brewery {
 	return []Brewery{
 		{
 			Name:        "Devil's Peak Brewing Company",
@@ -155,8 +155,8 @@ func insertBreweries(ctx context.Context, db *sqlx.DB, breweries []Brewery) erro
 				:name, :brewery_type, :street, :city, :state, :postal_code, :country, :phone, :website_url
 			)
 		`
-		if _, berr := db.NamedExecContext(ctx, query, brewery); berr != nil {
-			return fmt.Errorf("failed to insert brewery %s: %w", brewery.Name, berr)
+		if _, insertErr := db.NamedExecContext(ctx, query, brewery); insertErr != nil {
+			return fmt.Errorf("failed to insert brewery %s: %w", brewery.Name, insertErr)
 		}
 	}
 	return nil
@@ -177,25 +177,30 @@ func seedBeers(ctx context.Context, db *sqlx.DB) error {
 		return nil
 	}
 	logrus.Info("Seeding beers...")
-	breweries, berr := getBreweryIDs(ctx, db)
-	if berr != nil {
-		return berr
+	breweries, breweryErr := GetBreweryIDs(ctx, db)
+	if breweryErr != nil {
+		return breweryErr
 	}
-	beers := getSeedBeers()
-	if berr := insertBeers(ctx, db, breweries, beers); berr != nil {
-		return berr
+	beers := GetSeedBeers()
+	if insertErr := insertBeers(ctx, db, breweries, beers); insertErr != nil {
+		return insertErr
 	}
 	logrus.Infof("Seeded %d beers", len(beers))
 	return nil
 }
 
-func getBreweryIDs(ctx context.Context, db *sqlx.DB) (map[string]int, error) {
+func GetBreweryIDs(ctx context.Context, db *sqlx.DB) (map[string]int, error) {
 	breweries := map[string]int{}
 	rows, err := db.QueryxContext(ctx, "SELECT id, name FROM breweries")
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			logrus.Warnf("Failed to close rows: %v", closeErr)
+		}
+	}()
+
 	for rows.Next() {
 		var id int
 		var name string
@@ -204,13 +209,24 @@ func getBreweryIDs(ctx context.Context, db *sqlx.DB) (map[string]int, error) {
 		}
 		breweries[name] = id
 	}
+
 	if rowsErr := rows.Err(); rowsErr != nil {
 		return nil, rowsErr
 	}
 	return breweries, nil
 }
 
-type seedBeer struct {
+// SeedBreweries exports the internal seedBreweries function for testing.
+func SeedBreweries(ctx context.Context, db *sqlx.DB) error {
+	return seedBreweries(ctx, db)
+}
+
+// SeedBeers exports the internal seedBeers function for testing.
+func SeedBeers(ctx context.Context, db *sqlx.DB) error {
+	return seedBeers(ctx, db)
+}
+
+type SeedBeer struct {
 	Name        string
 	BreweryName string
 	Style       string
@@ -220,8 +236,11 @@ type seedBeer struct {
 	Description string
 }
 
-func getSeedBeers() []seedBeer {
-	return []seedBeer{
+func GetSeedBeers() []SeedBeer {
+	// Note: The numeric values below are actual beer specifications (ABV, IBU, SRM)
+	// and are not arbitrary magic numbers - they represent real brewing data.
+	//nolint:mnd // These are real brewing specifications, not magic numbers
+	return []SeedBeer{
 		{
 			Name:        "King's Blockhouse IPA",
 			BreweryName: "Devil's Peak Brewing Company",
@@ -297,7 +316,7 @@ func getSeedBeers() []seedBeer {
 	}
 }
 
-func insertBeers(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []seedBeer) error {
+func insertBeers(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []SeedBeer) error {
 	for _, beer := range beers {
 		breweryID, exists := breweries[beer.BreweryName]
 		if !exists {
@@ -311,8 +330,8 @@ func insertBeers(ctx context.Context, db *sqlx.DB, breweries map[string]int, bee
 				$1, $2, $3, $4, $5, $6, $7
 			)
 		`
-		if _, berr := db.ExecContext(ctx, query, breweryID, beer.Name, beer.Style, beer.ABV, beer.IBU, beer.SRM, beer.Description); berr != nil {
-			return fmt.Errorf("failed to insert beer %s: %w", beer.Name, berr)
+		if _, insertErr := db.ExecContext(ctx, query, breweryID, beer.Name, beer.Style, beer.ABV, beer.IBU, beer.SRM, beer.Description); insertErr != nil {
+			return fmt.Errorf("failed to insert beer %s: %w", beer.Name, insertErr)
 		}
 	}
 	return nil

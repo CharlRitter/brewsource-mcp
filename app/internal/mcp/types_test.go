@@ -1,4 +1,4 @@
-package mcp
+package mcp_test
 
 import (
 	"encoding/json"
@@ -6,9 +6,11 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 )
 
-// Test Message Validation - Enhanced with edge cases.
+// Test mcp.Message Validation - Enhanced with edge cases.
 func TestMessage_Validation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -52,56 +54,56 @@ func TestMessage_Validation(t *testing.T) {
 			name:      "invalid JSON - missing closing brace",
 			jsonData:  `{"jsonrpc":"2.0","method":"test","id":1`,
 			expectErr: true,
-			errorCode: ParseError,
+			errorCode: mcp.ParseError,
 		},
 		{
 			name:      "invalid JSON - malformed structure",
 			jsonData:  `{"jsonrpc":"2.0","method":}`,
 			expectErr: true,
-			errorCode: ParseError,
+			errorCode: mcp.ParseError,
 		},
 		{
 			name:      "wrong JSON-RPC version 1.0",
 			jsonData:  `{"jsonrpc":"1.0","method":"test","id":1}`,
 			expectErr: true,
-			errorCode: InvalidRequest,
+			errorCode: mcp.InvalidRequest,
 		},
 		{
 			name:      "wrong JSON-RPC version empty string",
 			jsonData:  `{"jsonrpc":"","method":"test","id":1}`,
 			expectErr: true,
-			errorCode: InvalidRequest,
+			errorCode: mcp.InvalidRequest,
 		},
 		{
 			name:      "missing JSON-RPC version",
 			jsonData:  `{"method":"test","id":1}`,
 			expectErr: true,
-			errorCode: InvalidRequest,
+			errorCode: mcp.InvalidRequest,
 		},
 		// Edge cases
 		{
 			name:      "empty JSON object",
 			jsonData:  `{}`,
 			expectErr: true,
-			errorCode: InvalidRequest,
+			errorCode: mcp.InvalidRequest,
 		},
 		{
 			name:      "null JSON",
 			jsonData:  `null`,
 			expectErr: true,
-			errorCode: ParseError,
+			errorCode: mcp.ParseError,
 		},
 		{
 			name:      "empty string",
 			jsonData:  ``,
 			expectErr: true,
-			errorCode: ParseError,
+			errorCode: mcp.ParseError,
 		},
 		{
 			name:      "array instead of object",
 			jsonData:  `[{"jsonrpc":"2.0","method":"test","id":1}]`,
 			expectErr: true,
-			errorCode: ParseError,
+			errorCode: mcp.ParseError,
 		},
 		// Boundary cases
 		{
@@ -118,44 +120,58 @@ func TestMessage_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg, err := ValidateMessage([]byte(tt.jsonData))
-
-			if (err != nil) != tt.expectErr {
-				t.Errorf("ValidateMessage() error = %v, expectErr = %v", err, tt.expectErr)
-				return
-			}
-
-			if err != nil {
-				mcpErr := &Error{}
-				ok := errors.As(err, &mcpErr)
-				if !ok {
-					t.Errorf("Expected MCP Error, got %T", err)
-					return
-				}
-				if tt.errorCode != 0 && mcpErr.Code != tt.errorCode {
-					t.Errorf("Expected error code %d, got %d", tt.errorCode, mcpErr.Code)
-				}
-			} else if msg != nil {
-				// Validate successful parsing
-				if msg.JSONRPC != "2.0" {
-					t.Errorf("Expected JSONRPC version 2.0, got %s", msg.JSONRPC)
-				}
-			}
+			validateMessageTest(t, tt.jsonData, tt.expectErr, tt.errorCode)
 		})
 	}
 }
 
-// Test Error interface implementation.
+// Helper function to validate a single message test case.
+func validateMessageTest(t *testing.T, jsonData string, expectErr bool, errorCode int) {
+	msg, err := mcp.ValidateMessage([]byte(jsonData))
+
+	if (err != nil) != expectErr {
+		t.Errorf("mcp.ValidateMessage() error = %v, expectErr = %v", err, expectErr)
+		return
+	}
+
+	if err != nil {
+		validateValidationError(t, err, errorCode)
+	} else if msg != nil {
+		validateSuccessResponse(t, msg)
+	}
+}
+
+// Helper function to validate error responses.
+func validateValidationError(t *testing.T, err error, expectedCode int) {
+	mcpErr := &mcp.Error{}
+	ok := errors.As(err, &mcpErr)
+	if !ok {
+		t.Errorf("Expected MCP mcp.Error, got %T", err)
+		return
+	}
+	if expectedCode != 0 && mcpErr.Code != expectedCode {
+		t.Errorf("Expected error code %d, got %d", expectedCode, mcpErr.Code)
+	}
+}
+
+// Helper function to validate successful responses.
+func validateSuccessResponse(t *testing.T, msg *mcp.Message) {
+	if msg.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC version 2.0, got %s", msg.JSONRPC)
+	}
+}
+
+// Test mcp.Error interface implementation.
 func TestError_Error(t *testing.T) {
 	tests := []struct {
 		name     string
-		err      *Error
+		err      *mcp.Error
 		expected string
 	}{
 		{
 			name: "standard error with message",
-			err: &Error{
-				Code:    InvalidParams,
+			err: &mcp.Error{
+				Code:    mcp.InvalidParams,
 				Message: "test error message",
 				Data:    map[string]interface{}{"detail": "extra info"},
 			},
@@ -163,26 +179,26 @@ func TestError_Error(t *testing.T) {
 		},
 		{
 			name: "empty error message",
-			err: &Error{
-				Code:    InternalError,
+			err: &mcp.Error{
+				Code:    mcp.InternalError,
 				Message: "",
 			},
 			expected: "",
 		},
 		{
 			name: "error with special characters in message",
-			err: &Error{
-				Code:    ParseError,
-				Message: "Error with\nnewlines\tand\ttabs",
+			err: &mcp.Error{
+				Code:    mcp.ParseError,
+				Message: "mcp.Error with\nnewlines\tand\ttabs",
 			},
-			expected: "Error with\nnewlines\tand\ttabs",
+			expected: "mcp.Error with\nnewlines\tand\ttabs",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.err.Error(); got != tt.expected {
-				t.Errorf("Error() = %q, want %q", got, tt.expected)
+				t.Errorf("mcp.Error() = %q, want %q", got, tt.expected)
 			}
 		})
 	}
@@ -218,26 +234,26 @@ func TestNewToolResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := NewToolResult(tt.text)
+			result := mcp.NewToolResult(tt.text)
 
 			if result == nil {
-				t.Fatal("NewToolResult() returned nil")
+				t.Fatal("mcp.NewToolResult() returned nil")
 			}
 
 			if len(result.Content) != 1 {
-				t.Errorf("NewToolResult() content length = %d, want 1", len(result.Content))
+				t.Errorf("mcp.NewToolResult() content length = %d, want 1", len(result.Content))
 			}
 
 			if result.Content[0].Type != "text" {
-				t.Errorf("NewToolResult() content type = %q, want %q", result.Content[0].Type, "text")
+				t.Errorf("mcp.NewToolResult() content type = %q, want %q", result.Content[0].Type, "text")
 			}
 
 			if result.Content[0].Text != tt.text {
-				t.Errorf("NewToolResult() content text = %q, want %q", result.Content[0].Text, tt.text)
+				t.Errorf("mcp.NewToolResult() content text = %q, want %q", result.Content[0].Text, tt.text)
 			}
 
 			if result.IsError {
-				t.Errorf("NewToolResult() IsError = true, want false")
+				t.Errorf("mcp.NewToolResult() IsError = true, want false")
 			}
 		})
 	}
@@ -264,32 +280,32 @@ func TestNewErrorResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := NewErrorResult(tt.message)
+			result := mcp.NewErrorResult(tt.message)
 
 			if result == nil {
-				t.Fatal("NewErrorResult() returned nil")
+				t.Fatal("mcp.NewErrorResult() returned nil")
 			}
 
 			if len(result.Content) != 1 {
-				t.Errorf("NewErrorResult() content length = %d, want 1", len(result.Content))
+				t.Errorf("mcp.NewErrorResult() content length = %d, want 1", len(result.Content))
 			}
 
 			if result.Content[0].Type != "text" {
-				t.Errorf("NewErrorResult() content type = %q, want %q", result.Content[0].Type, "text")
+				t.Errorf("mcp.NewErrorResult() content type = %q, want %q", result.Content[0].Type, "text")
 			}
 
 			if result.Content[0].Text != tt.message {
-				t.Errorf("NewErrorResult() content text = %q, want %q", result.Content[0].Text, tt.message)
+				t.Errorf("mcp.NewErrorResult() content text = %q, want %q", result.Content[0].Text, tt.message)
 			}
 
 			if !result.IsError {
-				t.Errorf("NewErrorResult() IsError = false, want true")
+				t.Errorf("mcp.NewErrorResult() IsError = false, want true")
 			}
 		})
 	}
 }
 
-// Test MCP Error creation with comprehensive scenarios.
+// Test MCP mcp.Error creation with comprehensive scenarios.
 func TestNewMCPError(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -299,25 +315,25 @@ func TestNewMCPError(t *testing.T) {
 	}{
 		{
 			name:    "standard error",
-			code:    InvalidParams,
+			code:    mcp.InvalidParams,
 			message: "test error",
 			data:    map[string]interface{}{"key": "value"},
 		},
 		{
 			name:    "error with nil data",
-			code:    InternalError,
+			code:    mcp.InternalError,
 			message: "internal error",
 			data:    nil,
 		},
 		{
 			name:    "error with string data",
-			code:    ParseError,
+			code:    mcp.ParseError,
 			message: "parse error",
 			data:    "additional context",
 		},
 		{
 			name:    "error with array data",
-			code:    MethodNotFound,
+			code:    mcp.MethodNotFound,
 			message: "method not found",
 			data:    []string{"method1", "method2", "method3"},
 		},
@@ -331,28 +347,28 @@ func TestNewMCPError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := NewMCPError(tt.code, tt.message, tt.data)
+			err := mcp.NewMCPError(tt.code, tt.message, tt.data)
 
 			if err == nil {
-				t.Fatal("NewMCPError() returned nil")
+				t.Fatal("mcp.NewMCPError() returned nil")
 			}
 
 			if err.Code != tt.code {
-				t.Errorf("NewMCPError() Code = %d, want %d", err.Code, tt.code)
+				t.Errorf("mcp.NewMCPError() Code = %d, want %d", err.Code, tt.code)
 			}
 
 			if err.Message != tt.message {
-				t.Errorf("NewMCPError() Message = %q, want %q", err.Message, tt.message)
+				t.Errorf("mcp.NewMCPError() mcp.Message = %q, want %q", err.Message, tt.message)
 			}
 
 			if !reflect.DeepEqual(err.Data, tt.data) {
-				t.Errorf("NewMCPError() Data = %v, want %v", err.Data, tt.data)
+				t.Errorf("mcp.NewMCPError() Data = %v, want %v", err.Data, tt.data)
 			}
 		})
 	}
 }
 
-// Test Message creation functions.
+// Test mcp.Message creation functions.
 func TestNewMessage(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -383,26 +399,26 @@ func TestNewMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := NewMessage(tt.method, tt.params)
+			msg := mcp.NewMessage(tt.method, tt.params)
 
 			if msg == nil {
-				t.Fatal("NewMessage() returned nil")
+				t.Fatal("mcp.NewMessage() returned nil")
 			}
 
 			if msg.JSONRPC != "2.0" {
-				t.Errorf("NewMessage() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
+				t.Errorf("mcp.NewMessage() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
 			}
 
 			if msg.Method != tt.method {
-				t.Errorf("NewMessage() Method = %q, want %q", msg.Method, tt.method)
+				t.Errorf("mcp.NewMessage() Method = %q, want %q", msg.Method, tt.method)
 			}
 
 			if !reflect.DeepEqual(msg.Params, tt.params) {
-				t.Errorf("NewMessage() Params = %v, want %v", msg.Params, tt.params)
+				t.Errorf("mcp.NewMessage() Params = %v, want %v", msg.Params, tt.params)
 			}
 
 			if msg.ID != nil {
-				t.Errorf("NewMessage() ID = %v, want nil", msg.ID)
+				t.Errorf("mcp.NewMessage() ID = %v, want nil", msg.ID)
 			}
 		})
 	}
@@ -443,30 +459,30 @@ func TestNewResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := NewResponse(tt.id, tt.result)
+			msg := mcp.NewResponse(tt.id, tt.result)
 
 			if msg == nil {
-				t.Fatal("NewResponse() returned nil")
+				t.Fatal("mcp.NewResponse() returned nil")
 			}
 
 			if msg.JSONRPC != "2.0" {
-				t.Errorf("NewResponse() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
+				t.Errorf("mcp.NewResponse() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
 			}
 
 			if !reflect.DeepEqual(msg.ID, tt.id) {
-				t.Errorf("NewResponse() ID = %v, want %v", msg.ID, tt.id)
+				t.Errorf("mcp.NewResponse() ID = %v, want %v", msg.ID, tt.id)
 			}
 
 			if !reflect.DeepEqual(msg.Result, tt.result) {
-				t.Errorf("NewResponse() Result = %v, want %v", msg.Result, tt.result)
+				t.Errorf("mcp.NewResponse() Result = %v, want %v", msg.Result, tt.result)
 			}
 
 			if msg.Method != "" {
-				t.Errorf("NewResponse() Method = %q, want empty", msg.Method)
+				t.Errorf("mcp.NewResponse() Method = %q, want empty", msg.Method)
 			}
 
 			if msg.Error != nil {
-				t.Errorf("NewResponse() Error = %v, want nil", msg.Error)
+				t.Errorf("mcp.NewResponse() mcp.Error = %v, want nil", msg.Error)
 			}
 		})
 	}
@@ -476,18 +492,18 @@ func TestNewErrorResponse(t *testing.T) {
 	tests := []struct {
 		name string
 		id   interface{}
-		err  *Error
+		err  *mcp.Error
 	}{
 		{
 			name: "error response with standard error",
 			id:   "test-id",
-			err:  &Error{Code: InternalError, Message: "internal error"},
+			err:  &mcp.Error{Code: mcp.InternalError, Message: "internal error"},
 		},
 		{
 			name: "error response with detailed error",
 			id:   123,
-			err: &Error{
-				Code:    InvalidParams,
+			err: &mcp.Error{
+				Code:    mcp.InvalidParams,
 				Message: "invalid parameters",
 				Data:    map[string]interface{}{"field": "username", "issue": "required"},
 			},
@@ -495,36 +511,36 @@ func TestNewErrorResponse(t *testing.T) {
 		{
 			name: "error response with nil id",
 			id:   nil,
-			err:  &Error{Code: ParseError, Message: "parse error"},
+			err:  &mcp.Error{Code: mcp.ParseError, Message: "parse error"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := NewErrorResponse(tt.id, tt.err)
+			msg := mcp.NewErrorResponse(tt.id, tt.err)
 
 			if msg == nil {
-				t.Fatal("NewErrorResponse() returned nil")
+				t.Fatal("mcp.NewErrorResponse() returned nil")
 			}
 
 			if msg.JSONRPC != "2.0" {
-				t.Errorf("NewErrorResponse() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
+				t.Errorf("mcp.NewErrorResponse() JSONRPC = %q, want %q", msg.JSONRPC, "2.0")
 			}
 
 			if !reflect.DeepEqual(msg.ID, tt.id) {
-				t.Errorf("NewErrorResponse() ID = %v, want %v", msg.ID, tt.id)
+				t.Errorf("mcp.NewErrorResponse() ID = %v, want %v", msg.ID, tt.id)
 			}
 
 			if !reflect.DeepEqual(msg.Error, tt.err) {
-				t.Errorf("NewErrorResponse() Error = %v, want %v", msg.Error, tt.err)
+				t.Errorf("mcp.NewErrorResponse() mcp.Error = %v, want %v", msg.Error, tt.err)
 			}
 
 			if msg.Result != nil {
-				t.Errorf("NewErrorResponse() Result = %v, want nil", msg.Result)
+				t.Errorf("mcp.NewErrorResponse() Result = %v, want nil", msg.Result)
 			}
 
 			if msg.Method != "" {
-				t.Errorf("NewErrorResponse() Method = %q, want empty", msg.Method)
+				t.Errorf("mcp.NewErrorResponse() Method = %q, want empty", msg.Method)
 			}
 		})
 	}
@@ -556,20 +572,20 @@ func TestStringSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			schema := StringSchema(tt.description, tt.required)
+			schema := mcp.StringSchema(tt.description, tt.required)
 
 			if schema["type"] != "string" {
-				t.Errorf("StringSchema() type = %v, want %q", schema["type"], "string")
+				t.Errorf("mcp.StringSchema() type = %v, want %q", schema["type"], "string")
 			}
 
 			if schema["description"] != tt.description {
-				t.Errorf("StringSchema() description = %v, want %q", schema["description"], tt.description)
+				t.Errorf("mcp.StringSchema() description = %v, want %q", schema["description"], tt.description)
 			}
 
 			// The current implementation doesn't use the required parameter,
 			// but we test that it doesn't break anything
 			if schema == nil {
-				t.Error("StringSchema() returned nil")
+				t.Error("mcp.StringSchema() returned nil")
 			}
 		})
 	}
@@ -584,7 +600,7 @@ func TestObjectSchema(t *testing.T) {
 		{
 			name: "object schema with required fields",
 			properties: map[string]interface{}{
-				"name": StringSchema("Name field", true),
+				"name": mcp.StringSchema("Name field", true),
 				"age":  map[string]interface{}{"type": "integer"},
 			},
 			required: []string{"name"},
@@ -592,7 +608,7 @@ func TestObjectSchema(t *testing.T) {
 		{
 			name: "object schema with no required fields",
 			properties: map[string]interface{}{
-				"optional": StringSchema("Optional field", false),
+				"optional": mcp.StringSchema("Optional field", false),
 			},
 			required: []string{},
 		},
@@ -604,8 +620,8 @@ func TestObjectSchema(t *testing.T) {
 		{
 			name: "object schema with multiple required fields",
 			properties: map[string]interface{}{
-				"name":  StringSchema("Name field", true),
-				"email": StringSchema("Email field", true),
+				"name":  mcp.StringSchema("Name field", true),
+				"email": mcp.StringSchema("Email field", true),
 				"age":   map[string]interface{}{"type": "integer"},
 			},
 			required: []string{"name", "email"},
@@ -614,34 +630,46 @@ func TestObjectSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			schema := ObjectSchema(tt.properties, tt.required)
-
-			if schema["type"] != "object" {
-				t.Errorf("ObjectSchema() type = %v, want %q", schema["type"], "object")
-			}
-
-			if !reflect.DeepEqual(schema["properties"], tt.properties) {
-				t.Errorf("ObjectSchema() properties = %v, want %v", schema["properties"], tt.properties)
-			}
-
-			if len(tt.required) > 0 {
-				requiredField, exists := schema["required"]
-				if !exists {
-					t.Error("ObjectSchema() missing required field when required array is not empty")
-				} else {
-					requiredArray, ok := requiredField.([]string)
-					if !ok {
-						t.Errorf("ObjectSchema() required field is not []string, got %T", requiredField)
-					} else if !reflect.DeepEqual(requiredArray, tt.required) {
-						t.Errorf("ObjectSchema() required = %v, want %v", requiredArray, tt.required)
-					}
-				}
-			} else {
-				if requiredField, exists := schema["required"]; exists && requiredField != nil {
-					t.Errorf("ObjectSchema() has required field when it should be empty: %v", requiredField)
-				}
-			}
+			validateObjectSchema(t, tt.properties, tt.required)
 		})
+	}
+}
+
+// Helper function to validate object schema tests.
+func validateObjectSchema(t *testing.T, properties map[string]interface{}, required []string) {
+	schema := mcp.ObjectSchema(properties, required)
+
+	if schema["type"] != "object" {
+		t.Errorf("mcp.ObjectSchema() type = %v, want %q", schema["type"], "object")
+	}
+
+	if !reflect.DeepEqual(schema["properties"], properties) {
+		t.Errorf("mcp.ObjectSchema() properties = %v, want %v", schema["properties"], properties)
+	}
+
+	validateRequiredField(t, schema, required)
+}
+
+// Helper function to validate the required field in object schema.
+func validateRequiredField(t *testing.T, schema map[string]interface{}, expectedRequired []string) {
+	if len(expectedRequired) > 0 {
+		requiredField, exists := schema["required"]
+		if !exists {
+			t.Error("mcp.ObjectSchema() missing required field when required array is not empty")
+			return
+		}
+
+		requiredArray, ok := requiredField.([]string)
+		if !ok {
+			t.Errorf("mcp.ObjectSchema() required field is not []string, got %T", requiredField)
+			return
+		}
+
+		if !reflect.DeepEqual(requiredArray, expectedRequired) {
+			t.Errorf("mcp.ObjectSchema() required = %v, want %v", requiredArray, expectedRequired)
+		}
+	} else if requiredField, exists := schema["required"]; exists && requiredField != nil {
+		t.Errorf("mcp.ObjectSchema() has required field when it should be empty: %v", requiredField)
 	}
 }
 
@@ -649,11 +677,11 @@ func TestObjectSchema(t *testing.T) {
 func TestMessage_JSONMarshaling(t *testing.T) {
 	tests := []struct {
 		name string
-		msg  *Message
+		msg  *mcp.Message
 	}{
 		{
 			name: "complete message with all fields",
-			msg: &Message{
+			msg: &mcp.Message{
 				JSONRPC: "2.0",
 				ID:      "test-123",
 				Method:  "test_method",
@@ -662,7 +690,7 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 		},
 		{
 			name: "response message",
-			msg: &Message{
+			msg: &mcp.Message{
 				JSONRPC: "2.0",
 				ID:      42,
 				Result:  map[string]interface{}{"status": "ok"},
@@ -670,15 +698,15 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 		},
 		{
 			name: "error message",
-			msg: &Message{
+			msg: &mcp.Message{
 				JSONRPC: "2.0",
 				ID:      "error-test",
-				Error:   &Error{Code: InternalError, Message: "something went wrong"},
+				Error:   &mcp.Error{Code: mcp.InternalError, Message: "something went wrong"},
 			},
 		},
 		{
 			name: "notification message (no ID)",
-			msg: &Message{
+			msg: &mcp.Message{
 				JSONRPC: "2.0",
 				Method:  "notify",
 				Params:  []string{"param1", "param2"},
@@ -688,108 +716,119 @@ func TestMessage_JSONMarshaling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Test marshaling
-			data, err := json.Marshal(tt.msg)
-			if err != nil {
-				t.Fatalf("json.Marshal() error = %v", err)
-			}
-
-			// Test unmarshaling
-			var unmarshaled Message
-			err = json.Unmarshal(data, &unmarshaled)
-			if err != nil {
-				t.Fatalf("json.Unmarshal() error = %v", err)
-			}
-
-			// Verify fields
-			if unmarshaled.JSONRPC != tt.msg.JSONRPC {
-				t.Errorf("Unmarshaled JSONRPC = %q, want %q", unmarshaled.JSONRPC, tt.msg.JSONRPC)
-			}
-
-			// Compare IDs with type conversion for JSON numeric handling
-			if !compareIDs(unmarshaled.ID, tt.msg.ID) {
-				t.Errorf(
-					"Unmarshaled ID = %v (type %T), want %v (type %T)",
-					unmarshaled.ID,
-					unmarshaled.ID,
-					tt.msg.ID,
-					tt.msg.ID,
-				)
-			}
-
-			if unmarshaled.Method != tt.msg.Method {
-				t.Errorf("Unmarshaled Method = %q, want %q", unmarshaled.Method, tt.msg.Method)
-			}
-
-			// Note: For complex types like Params, Result, and Error, we need to handle
-			// the fact that JSON unmarshaling might change the exact types
-			// (e.g., all numbers become float64). For now, we'll just check they're not nil
-			// when they should be present.
-			if tt.msg.Params != nil && unmarshaled.Params == nil {
-				t.Error("Unmarshaled Params is nil when it should have a value")
-			}
-
-			if tt.msg.Result != nil && unmarshaled.Result == nil {
-				t.Error("Unmarshaled Result is nil when it should have a value")
-			}
-
-			if tt.msg.Error != nil && unmarshaled.Error == nil {
-				t.Error("Unmarshaled Error is nil when it should have a value")
-			}
+			validateJSONMarshaling(t, tt.msg)
 		})
+	}
+}
+
+// Helper function to validate JSON marshaling/unmarshaling.
+func validateJSONMarshaling(t *testing.T, originalMsg *mcp.Message) {
+	// Test marshaling
+	data, err := json.Marshal(originalMsg)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	// Test unmarshaling
+	var unmarshaled mcp.Message
+	err = json.Unmarshal(data, &unmarshaled)
+	if err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	validateUnmarshaledMessage(t, &unmarshaled, originalMsg)
+}
+
+// Helper function to validate unmarshaled message fields.
+func validateUnmarshaledMessage(t *testing.T, unmarshaled, original *mcp.Message) {
+	if unmarshaled.JSONRPC != original.JSONRPC {
+		t.Errorf("Unmarshaled JSONRPC = %q, want %q", unmarshaled.JSONRPC, original.JSONRPC)
+	}
+
+	// Compare IDs with type conversion for JSON numeric handling
+	if !compareIDs(unmarshaled.ID, original.ID) {
+		t.Errorf(
+			"Unmarshaled ID = %v (type %T), want %v (type %T)",
+			unmarshaled.ID, unmarshaled.ID, original.ID, original.ID,
+		)
+	}
+
+	if unmarshaled.Method != original.Method {
+		t.Errorf("Unmarshaled Method = %q, want %q", unmarshaled.Method, original.Method)
+	}
+
+	validateUnmarshaledComplexFields(t, unmarshaled, original)
+}
+
+// Helper function to validate complex fields in unmarshaled message.
+func validateUnmarshaledComplexFields(t *testing.T, unmarshaled, original *mcp.Message) {
+	// Note: For complex types like Params, Result, and Error, we need to handle
+	// the fact that JSON unmarshaling might change the exact types
+	// (e.g., all numbers become float64). For now, we'll just check they're not nil
+	// when they should be present.
+	if original.Params != nil && unmarshaled.Params == nil {
+		t.Error("Unmarshaled Params is nil when it should have a value")
+	}
+
+	if original.Result != nil && unmarshaled.Result == nil {
+		t.Error("Unmarshaled Result is nil when it should have a value")
+	}
+
+	if original.Error != nil && unmarshaled.Error == nil {
+		t.Error("Unmarshaled Error is nil when it should have a value")
 	}
 }
 
 // Test error code constants.
 func TestErrorCodes(t *testing.T) {
 	expectedCodes := map[string]int{
-		"ParseError":     -32700,
-		"InvalidRequest": -32600,
-		"MethodNotFound": -32601,
-		"InvalidParams":  -32602,
-		"InternalError":  -32603,
+		"mcp.ParseError":     -32700,
+		"mcp.InvalidRequest": -32600,
+		"mcp.MethodNotFound": -32601,
+		"mcp.InvalidParams":  -32602,
+		"mcp.InternalError":  -32603,
 	}
 
 	actualCodes := map[string]int{
-		"ParseError":     ParseError,
-		"InvalidRequest": InvalidRequest,
-		"MethodNotFound": MethodNotFound,
-		"InvalidParams":  InvalidParams,
-		"InternalError":  InternalError,
+		"mcp.ParseError":     mcp.ParseError,
+		"mcp.InvalidRequest": mcp.InvalidRequest,
+		"mcp.MethodNotFound": mcp.MethodNotFound,
+		"mcp.InvalidParams":  mcp.InvalidParams,
+		"mcp.InternalError":  mcp.InternalError,
 	}
 
 	for name, expected := range expectedCodes {
 		if actual, exists := actualCodes[name]; !exists {
-			t.Errorf("Error code %s is not defined", name)
+			t.Errorf("mcp.Error code %s is not defined", name)
 		} else if actual != expected {
-			t.Errorf("Error code %s = %d, want %d", name, actual, expected)
+			t.Errorf("mcp.Error code %s = %d, want %d", name, actual, expected)
 		}
 	}
 }
 
-// Test ToolContent structure.
+// Test mcp.ToolContent structure.
 func TestToolContent(t *testing.T) {
 	tests := []struct {
 		name    string
-		content ToolContent
+		content mcp.ToolContent
 	}{
 		{
 			name: "text content",
-			content: ToolContent{
+			content: mcp.ToolContent{
 				Type: "text",
 				Text: "sample text",
 			},
 		},
 		{
 			name: "data content",
-			content: ToolContent{
+			content: mcp.ToolContent{
 				Type: "data",
 				Data: "base64encodeddata",
 			},
 		},
 		{
 			name: "content with both text and data",
-			content: ToolContent{
+			content: mcp.ToolContent{
 				Type: "mixed",
 				Text: "description",
 				Data: "data content",
@@ -799,13 +838,13 @@ func TestToolContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Test JSON marshaling of ToolContent
+			// Test JSON marshaling of mcp.ToolContent
 			data, err := json.Marshal(tt.content)
 			if err != nil {
 				t.Fatalf("json.Marshal() error = %v", err)
 			}
 
-			var unmarshaled ToolContent
+			var unmarshaled mcp.ToolContent
 			err = json.Unmarshal(data, &unmarshaled)
 			if err != nil {
 				t.Fatalf("json.Unmarshal() error = %v", err)
@@ -832,7 +871,7 @@ func BenchmarkValidateMessage(b *testing.B) {
 
 	b.ResetTimer()
 	for range b.N {
-		_, err := ValidateMessage(validJSON)
+		_, err := mcp.ValidateMessage(validJSON)
 		if err != nil {
 			b.Fatalf("Unexpected error: %v", err)
 		}
@@ -844,15 +883,15 @@ func BenchmarkNewToolResult(b *testing.B) {
 
 	b.ResetTimer()
 	for range b.N {
-		result := NewToolResult(text)
+		result := mcp.NewToolResult(text)
 		if result == nil {
-			b.Fatal("NewToolResult returned nil")
+			b.Fatal("mcp.NewToolResult returned nil")
 		}
 	}
 }
 
 func BenchmarkMessage_JSONMarshal(b *testing.B) {
-	msg := &Message{
+	msg := &mcp.Message{
 		JSONRPC: "2.0",
 		ID:      "benchmark-test",
 		Method:  "benchmark_method",
@@ -884,13 +923,11 @@ func compareIDs(id1, id2 interface{}) bool {
 			return v1 == float64(v2)
 		}
 	case int:
-		switch v2 := id2.(type) {
-		case float64:
+		if v2, ok := id2.(float64); ok {
 			return float64(v1) == v2
 		}
 	case int64:
-		switch v2 := id2.(type) {
-		case float64:
+		if v2, ok := id2.(float64); ok {
 			return float64(v1) == v2
 		}
 	}

@@ -36,7 +36,7 @@ func NewServer(toolRegistry ToolHandlerRegistry, resourceRegistry ResourceHandle
 		tools:     make(map[string]ToolHandler),
 		resources: make(map[string]ResourceHandler),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
+			CheckOrigin: func(_ *http.Request) bool {
 				// In production, implement proper origin checking
 				return true
 			},
@@ -125,8 +125,8 @@ func (s *Server) HandleStdio() error {
 				continue
 			}
 
-			if _, err := os.Stdout.Write(append(responseData, '\n')); err != nil {
-				logrus.Errorf("Failed to write response to stdout: %v", err)
+			if _, writeErr := os.Stdout.Write(append(responseData, '\n')); writeErr != nil {
+				logrus.Errorf("Failed to write response to stdout: %v", writeErr)
 			}
 		}
 	}

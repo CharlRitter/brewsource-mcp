@@ -9,6 +9,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// ErrStringArrayEmpty represents an error when StringArray is empty.
+var ErrStringArrayEmpty = errors.New("string array is empty")
+
 // StringArray handles PostgreSQL string arrays in Go.
 type StringArray []string
 
@@ -30,11 +33,11 @@ func (s *StringArray) Scan(value interface{}) error {
 }
 
 // Value implements the Valuer interface for StringArray.
-func (s StringArray) Value() (driver.Value, error) {
-	if s == nil {
-		return nil, nil
+func (s *StringArray) Value() (driver.Value, error) {
+	if s == nil || len(*s) == 0 {
+		return "[]", nil
 	}
-	return json.Marshal(s)
+	return json.Marshal(*s)
 }
 
 // Beer represents a commercial beer.
@@ -67,7 +70,7 @@ type Brewery struct {
 	UpdatedAt   time.Time `json:"updated_at"   db:"updated_at"`
 }
 
-// Database migration function.
+// MigrateDatabase creates the necessary database tables and indexes for the brewsource application.
 func MigrateDatabase(db *sqlx.DB) error {
 	queries := []string{
 		// Breweries table

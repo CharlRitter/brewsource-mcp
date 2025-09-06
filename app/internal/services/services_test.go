@@ -1,4 +1,4 @@
-package services
+package services_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
@@ -17,49 +18,46 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test data constants.
-const (
-	testTimeout = 5 * time.Second
-)
-
-// Mock data for tests.
-var mockBreweryData = []*BrewerySearchResult{
-	{
-		ID:          1,
-		Name:        "Devil's Peak Brewing Company",
-		BreweryType: "micro",
-		Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
-		City:        "Woodstock",
-		State:       "Western Cape",
-		PostalCode:  "7925",
-		Country:     "South Africa",
-		Phone:       "+27 21 200 5818",
-		Website:     "https://www.devilspeak.beer",
-	},
-	{
-		ID:          2,
-		Name:        "Stone Brewing",
-		BreweryType: "regional",
-		Street:      "1999 Citracado Parkway",
-		City:        "Escondido",
-		State:       "California",
-		PostalCode:  "92029",
-		Country:     "United States",
-		Phone:       "+1 760 471 4999",
-		Website:     "https://www.stonebrewing.com",
-	},
-	{
-		ID:          3,
-		Name:        "Founders Brewing Co.",
-		BreweryType: "large",
-		Street:      "235 Grandville Ave SW",
-		City:        "Grand Rapids",
-		State:       "Michigan",
-		PostalCode:  "49503",
-		Country:     "United States",
-		Phone:       "+1 616 776 1195",
-		Website:     "https://foundersbrewing.com",
-	},
+// getMockBreweryData returns mock brewery data for testing.
+func getMockBreweryData() []*services.BrewerySearchResult {
+	return []*services.BrewerySearchResult{
+		{
+			ID:          1,
+			Name:        "Devil's Peak Brewing Company",
+			BreweryType: "micro",
+			Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
+			City:        "Woodstock",
+			State:       "Western Cape",
+			PostalCode:  "7925",
+			Country:     "South Africa",
+			Phone:       "+27 21 200 5818",
+			Website:     "https://www.devilspeak.beer",
+		},
+		{
+			ID:          2,
+			Name:        "Stone Brewing",
+			BreweryType: "regional",
+			Street:      "1999 Citracado Parkway",
+			City:        "Escondido",
+			State:       "California",
+			PostalCode:  "92029",
+			Country:     "United States",
+			Phone:       "+1 760 471 4999",
+			Website:     "https://www.stonebrewing.com",
+		},
+		{
+			ID:          3,
+			Name:        "Founders Brewing Co.",
+			BreweryType: "large",
+			Street:      "235 Grandville Ave SW",
+			City:        "Grand Rapids",
+			State:       "Michigan",
+			PostalCode:  "49503",
+			Country:     "United States",
+			Phone:       "+1 616 776 1195",
+			Website:     "https://foundersbrewing.com",
+		},
+	}
 }
 
 // Helper function to convert []interface{} to []driver.Value.
@@ -71,9 +69,9 @@ func interfaceToDriverValues(args []interface{}) []driver.Value {
 	return values
 }
 
-func setupBreweryService(db *sqlx.DB) *BreweryService {
+func setupBreweryService(db *sqlx.DB) *services.BreweryService {
 	// Using nil for Redis client in tests
-	return NewBreweryService(db, nil)
+	return services.NewBreweryService(db, nil)
 }
 
 // TestNewBreweryService tests the constructor.
@@ -83,22 +81,20 @@ func TestNewBreweryService(t *testing.T) {
 
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 
-	service := NewBreweryService(db, redisClient)
+	service := services.NewBreweryService(db, redisClient)
 
 	assert.NotNil(t, service)
-	assert.NotNil(t, service.db)
-	assert.NotNil(t, service.redisClient)
+	var _ services.BreweryServiceInterface = service
 }
 
 func TestNewBreweryService_WithNilRedis(t *testing.T) {
 	db, _ := setupMockDB(t)
 	defer db.Close()
 
-	service := NewBreweryService(db, nil)
+	service := services.NewBreweryService(db, nil)
 
 	assert.NotNil(t, service)
-	assert.NotNil(t, service.db)
-	assert.Nil(t, service.redisClient)
+	var _ services.BreweryServiceInterface = service
 }
 
 // TestBrewerySearchQuery_DefaultLimits tests limit validation (existing test enhanced).
@@ -119,8 +115,7 @@ func TestBrewerySearchQuery_DefaultLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			query := BrewerySearchQuery{
-				Name:  "test",
+			query := services.BrewerySearchQuery{
 				Limit: tt.inputLimit,
 			}
 
@@ -144,13 +139,13 @@ func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 	// Test the actual SQL query structure for different parameter combinations
 	testCases := []struct {
 		name         string
-		query        BrewerySearchQuery
+		query        services.BrewerySearchQuery
 		expectedSQL  string
 		expectedArgs []interface{}
 	}{
 		{
 			name: "no filters",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Limit: 10,
 			},
 			expectedSQL:  `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1\s+ORDER BY name\s+LIMIT \$1`,
@@ -158,7 +153,7 @@ func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 		},
 		{
 			name: "name filter only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Stone",
 				Limit: 15,
 			},
@@ -167,7 +162,7 @@ func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 		},
 		{
 			name: "location filter creates OR condition",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Location: "California",
 				Limit:    25,
 			},
@@ -176,7 +171,7 @@ func TestSearchBreweries_QueryBuildingLogic(t *testing.T) {
 		},
 		{
 			name: "multiple filters combined",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Stone",
 				City:  "San Diego",
 				State: "California",
@@ -214,7 +209,7 @@ func TestSearchBreweries_ResultMapping(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 1,
 	}
@@ -281,7 +276,7 @@ func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 
 	// Run multiple queries to check for memory leaks
 	for iteration := range 10 {
-		query := BrewerySearchQuery{
+		query := services.BrewerySearchQuery{
 			Name:  fmt.Sprintf("Test%d", iteration),
 			Limit: 50,
 		}
@@ -320,8 +315,7 @@ func TestSearchBreweries_MemoryLeakPrevention(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, results, 50)
 
-		// Clear results to help GC
-		results = nil
+		// Force GC to help prevent memory leaks in tests
 		runtime.GC()
 	}
 
@@ -354,7 +348,7 @@ func TestSearchBreweries_PartialMatching(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			query := BrewerySearchQuery{
+			query := services.BrewerySearchQuery{
 				Name:  tc.searchTerm,
 				Limit: 20,
 			}
@@ -404,8 +398,8 @@ func TestSearchBreweries_PartialMatching(t *testing.T) {
 
 // TestBrewerySearchResult_FieldsExist tests struct field existence (existing test enhanced).
 func TestBrewerySearchResult_FieldsExist(t *testing.T) {
-	// Test that all expected fields exist on the BrewerySearchResult struct
-	brewery := &BrewerySearchResult{
+	// Test that all expected fields exist on the services.BrewerySearchResult struct
+	brewery := &services.BrewerySearchResult{
 		ID:          1,
 		Name:        "Devil's Peak Brewing Company",
 		BreweryType: "micro",
@@ -418,7 +412,16 @@ func TestBrewerySearchResult_FieldsExist(t *testing.T) {
 		Website:     "https://www.devilspeak.beer",
 	}
 
+	assert.Equal(t, 1, brewery.ID)
 	assert.Equal(t, "Devil's Peak Brewing Company", brewery.Name)
+	assert.Equal(t, "micro", brewery.BreweryType)
+	assert.Equal(t, "1st Floor, The Old Warehouse, 6 Beach Road", brewery.Street)
+	assert.Equal(t, "Woodstock", brewery.City)
+	assert.Equal(t, "Western Cape", brewery.State)
+	assert.Equal(t, "7925", brewery.PostalCode)
+	assert.Equal(t, "South Africa", brewery.Country)
+	assert.Equal(t, "+27 21 200 5818", brewery.Phone)
+	assert.Equal(t, "https://www.devilspeak.beer", brewery.Website)
 	assert.Equal(t, "Woodstock", brewery.City)
 	assert.Equal(t, "Western Cape", brewery.State)
 	assert.Equal(t, "South Africa", brewery.Country)
@@ -434,7 +437,7 @@ func TestSearchBreweries_ByName_Success(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Stone",
 		Limit: 20,
 	}
@@ -442,10 +445,10 @@ func TestSearchBreweries_ByName_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -475,7 +478,7 @@ func TestSearchBreweries_LocationOrLogic(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Location: "San", // Should match cities, states, or countries containing "San"
 		Limit:    20,
 	}
@@ -514,7 +517,7 @@ func TestSearchBreweries_MultipleConditionsAndLogic(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:     "Stone",
 		City:     "Escondido",
 		State:    "California",
@@ -526,10 +529,10 @@ func TestSearchBreweries_MultipleConditionsAndLogic(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	// All conditions should be ANDed together
@@ -561,7 +564,7 @@ func TestSearchBreweries_PerformanceRegression(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 50,
 	}
@@ -617,7 +620,7 @@ func TestSearchBreweries_ErrorWrapping(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -635,17 +638,17 @@ func TestSearchBreweries_ErrorWrapping(t *testing.T) {
 	ctx := context.Background()
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to search breweries")
-	assert.ErrorIs(t, err, originalErr) // Original error should be wrapped
+	require.ErrorIs(t, err, originalErr) // Original error should be wrapped
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // Test data consistency.
 func TestBrewerySearchResult_DatabaseTagConsistency(t *testing.T) {
 	// Verify that struct tags match expected database column names
-	brewery := BrewerySearchResult{}
+	brewery := services.BrewerySearchResult{}
 
 	// Use reflection to check db tags (in a real scenario)
 	// For this test, we'll verify the expected field mappings match our mock data
@@ -664,20 +667,20 @@ func TestBrewerySearchResult_DatabaseTagConsistency(t *testing.T) {
 	}
 
 	// Verify we have all expected fields
-	assert.Len(t, expectedFields, 10, "BrewerySearchResult should have exactly 10 fields")
+	assert.Len(t, expectedFields, 10, "services.BrewerySearchResult should have exactly 10 fields")
 }
 
 // Table-driven test for all search combinations.
 func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 	testCases := []struct {
 		name         string
-		query        BrewerySearchQuery
+		query        services.BrewerySearchQuery
 		expectedArgs []interface{}
 		description  string
 	}{
 		{
 			name: "name only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Stone",
 				Limit: 20,
 			},
@@ -686,7 +689,7 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 		},
 		{
 			name: "city only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				City:  "Escondido",
 				Limit: 20,
 			},
@@ -695,7 +698,7 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 		},
 		{
 			name: "state only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				State: "California",
 				Limit: 20,
 			},
@@ -704,7 +707,7 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 		},
 		{
 			name: "country only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Country: "United States",
 				Limit:   20,
 			},
@@ -713,7 +716,7 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 		},
 		{
 			name: "location only",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Location: "California",
 				Limit:    20,
 			},
@@ -722,7 +725,7 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 		},
 		{
 			name: "name and city",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Stone",
 				City:  "Escondido",
 				Limit: 20,
@@ -745,17 +748,18 @@ func TestSearchBreweries_AllSearchCombinations(t *testing.T) {
 
 			// Build the expected SQL based on the query parameters
 			var expectedSQL string
-			if tc.query.Name != "" && tc.query.City != "" {
+			switch {
+			case tc.query.Name != "" && tc.query.City != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\) AND LOWER\(city\) LIKE LOWER\(\$2\)\s+ORDER BY name\s+LIMIT \$3`
-			} else if tc.query.Name != "" {
+			case tc.query.Name != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
-			} else if tc.query.City != "" {
+			case tc.query.City != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(city\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
-			} else if tc.query.State != "" {
+			case tc.query.State != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(state\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
-			} else if tc.query.Country != "" {
+			case tc.query.Country != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(country\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
-			} else if tc.query.Location != "" {
+			case tc.query.Location != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\)\s+ORDER BY name\s+LIMIT \$2`
 			}
 
@@ -779,7 +783,7 @@ func TestSearchBreweries_ByCity_Success(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		City:  "Woodstock",
 		Limit: 10,
 	}
@@ -787,10 +791,10 @@ func TestSearchBreweries_ByCity_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
-		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
-		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
-		mockBreweryData[0].Website,
+		getMockBreweryData()[0].ID, getMockBreweryData()[0].Name, getMockBreweryData()[0].BreweryType,
+		getMockBreweryData()[0].Street, getMockBreweryData()[0].City, getMockBreweryData()[0].State,
+		getMockBreweryData()[0].PostalCode, getMockBreweryData()[0].Country, getMockBreweryData()[0].Phone,
+		getMockBreweryData()[0].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -816,7 +820,7 @@ func TestSearchBreweries_ByLocation_Success(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Location: "California",
 		Limit:    5,
 	}
@@ -824,10 +828,10 @@ func TestSearchBreweries_ByLocation_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -853,7 +857,7 @@ func TestSearchBreweries_MultipleFilters_Success(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:    "Stone",
 		State:   "California",
 		Country: "United States",
@@ -863,10 +867,10 @@ func TestSearchBreweries_MultipleFilters_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -892,7 +896,7 @@ func TestSearchBreweries_NoResults(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "NonexistentBrewery",
 		Limit: 20,
 	}
@@ -924,7 +928,7 @@ func TestSearchBreweries_DatabaseError(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -938,7 +942,7 @@ func TestSearchBreweries_DatabaseError(t *testing.T) {
 	ctx := context.Background()
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to search breweries")
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -951,14 +955,14 @@ func TestSearchBreweries_EmptyFilters(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Limit: 10,
 	}
 
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	})
-	for _, brewery := range mockBreweryData[:2] {
+	for _, brewery := range getMockBreweryData()[:2] {
 		rows.AddRow(
 			brewery.ID, brewery.Name, brewery.BreweryType,
 			brewery.Street, brewery.City, brewery.State,
@@ -989,7 +993,7 @@ func TestSearchBreweries_CaseInsensitive(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "STONE", // Uppercase
 		Limit: 20,
 	}
@@ -997,10 +1001,10 @@ func TestSearchBreweries_CaseInsensitive(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -1026,7 +1030,7 @@ func TestSearchBreweries_SpecialCharacters(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Devil's", // Contains apostrophe
 		Limit: 20,
 	}
@@ -1034,10 +1038,10 @@ func TestSearchBreweries_SpecialCharacters(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
-		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
-		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
-		mockBreweryData[0].Website,
+		getMockBreweryData()[0].ID, getMockBreweryData()[0].Name, getMockBreweryData()[0].BreweryType,
+		getMockBreweryData()[0].Street, getMockBreweryData()[0].City, getMockBreweryData()[0].State,
+		getMockBreweryData()[0].PostalCode, getMockBreweryData()[0].Country, getMockBreweryData()[0].Phone,
+		getMockBreweryData()[0].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -1063,7 +1067,7 @@ func TestSearchBreweries_UnicodeCharacters(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Bières", // Unicode characters
 		Limit: 20,
 	}
@@ -1095,7 +1099,7 @@ func TestSearchBreweries_ContextTimeout(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1115,7 +1119,7 @@ func TestSearchBreweries_ContextTimeout(t *testing.T) {
 
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "canceling query due to user request")
 }
@@ -1126,7 +1130,7 @@ func TestSearchBreweries_ContextCancellation(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1147,7 +1151,7 @@ func TestSearchBreweries_ContextCancellation(t *testing.T) {
 
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "context canceled")
 }
@@ -1159,7 +1163,7 @@ func TestSearchBreweries_LargeResultSet(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Brewing", // Common term that might match many results
 		Limit: 100,       // Maximum allowed
 	}
@@ -1204,7 +1208,7 @@ func TestSearchBreweries_ComplexLocationSearch(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Location: "United", // Should match "United States" in country
 		Limit:    20,
 	}
@@ -1212,7 +1216,7 @@ func TestSearchBreweries_ComplexLocationSearch(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	})
-	for _, brewery := range mockBreweryData[1:] { // Stone and Founders (both US)
+	for _, brewery := range getMockBreweryData()[1:] { // Stone and Founders (both US)
 		rows.AddRow(
 			brewery.ID, brewery.Name, brewery.BreweryType,
 			brewery.Street, brewery.City, brewery.State,
@@ -1250,7 +1254,7 @@ func TestSearchBreweries_AllEmptyFields(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:     "",
 		Location: "",
 		City:     "",
@@ -1284,12 +1288,12 @@ func TestSearchBreweries_AllEmptyFields(t *testing.T) {
 func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 	testCases := []struct {
 		name      string
-		query     BrewerySearchQuery
+		query     services.BrewerySearchQuery
 		expectErr bool
 	}{
 		{
 			name: "SQL injection in name field",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "'; DROP TABLE breweries; --",
 				Limit: 20,
 			},
@@ -1297,7 +1301,7 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 		},
 		{
 			name: "SQL injection in city field",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				City:  "' OR 1=1 --",
 				Limit: 20,
 			},
@@ -1305,7 +1309,7 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 		},
 		{
 			name: "SQL injection in state field",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				State: "' UNION SELECT * FROM users --",
 				Limit: 20,
 			},
@@ -1313,7 +1317,7 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 		},
 		{
 			name: "SQL injection in country field",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Country: "' OR '1'='1",
 				Limit:   20,
 			},
@@ -1321,7 +1325,7 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 		},
 		{
 			name: "SQL injection in location field",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Location: "; UPDATE breweries SET name='hacked'",
 				Limit:    20,
 			},
@@ -1345,19 +1349,20 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 			var expectedSQL string
 			var expectedArgs []interface{}
 
-			if tc.query.Name != "" {
+			switch {
+			case tc.query.Name != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(name\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
 				expectedArgs = []interface{}{"%" + tc.query.Name + "%", 20}
-			} else if tc.query.City != "" {
+			case tc.query.City != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(city\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
 				expectedArgs = []interface{}{"%" + tc.query.City + "%", 20}
-			} else if tc.query.State != "" {
+			case tc.query.State != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(state\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
 				expectedArgs = []interface{}{"%" + tc.query.State + "%", 20}
-			} else if tc.query.Country != "" {
+			case tc.query.Country != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND LOWER\(country\) LIKE LOWER\(\$1\)\s+ORDER BY name\s+LIMIT \$2`
 				expectedArgs = []interface{}{"%" + tc.query.Country + "%", 20}
-			} else if tc.query.Location != "" {
+			case tc.query.Location != "":
 				expectedSQL = `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url\s+FROM breweries\s+WHERE 1=1 AND \(LOWER\(city\) LIKE LOWER\(\$1\) OR LOWER\(state\) LIKE LOWER\(\$1\) OR LOWER\(country\) LIKE LOWER\(\$1\)\)\s+ORDER BY name\s+LIMIT \$2`
 				expectedArgs = []interface{}{"%" + tc.query.Location + "%", 20}
 			}
@@ -1370,10 +1375,10 @@ func TestSearchBreweries_SQLInjectionAttempts(t *testing.T) {
 			results, err := service.SearchBreweries(ctx, tc.query)
 
 			if tc.expectErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, results)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, results)
 			}
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -1388,7 +1393,7 @@ func TestSearchBreweries_NullValueHandling(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1435,7 +1440,7 @@ func TestSearchBreweries_LongFieldValues(t *testing.T) {
 	longName := strings.Repeat("Very Long Brewery Name ", 50) // ~1000+ characters
 	longCity := strings.Repeat("Very Long City Name ", 20)    // ~400+ characters
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  longName,
 		City:  longCity,
 		Limit: 20,
@@ -1456,11 +1461,8 @@ func TestSearchBreweries_LongFieldValues(t *testing.T) {
 
 	require.NoError(t, err)
 	// For long field values test, the service should handle it gracefully
-	// Accept both nil slice and empty slice
-	if results != nil {
-		// If not nil, should be empty or have expected results
-		// This tests that long field values don't crash the service
-	}
+	// Accept both nil slice and empty slice - testing that long field values don't crash the service
+	assert.NotNil(t, results)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -1489,7 +1491,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 			WillReturnRows(rows)
 	}
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1509,7 +1511,7 @@ func TestSearchBreweries_ConcurrentRequests(t *testing.T) {
 	// Collect results
 	for range numRoutines {
 		err := <-results
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -1522,7 +1524,7 @@ func TestSearchBreweries_MemoryUsage(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 100,
 	}
@@ -1572,7 +1574,7 @@ func TestSearchBreweries_OrderByName(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Brewing",
 		Limit: 20,
 	}
@@ -1619,7 +1621,7 @@ func TestSearchBreweries_WhitespaceHandling(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "  Stone  ",     // Leading and trailing whitespace
 		City:  "\tEscondido\n", // Tab and newline characters
 		Limit: 20,
@@ -1628,10 +1630,10 @@ func TestSearchBreweries_WhitespaceHandling(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -1657,7 +1659,7 @@ func TestSearchBreweries_DatabaseConnectionError(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1673,7 +1675,7 @@ func TestSearchBreweries_DatabaseConnectionError(t *testing.T) {
 	ctx := context.Background()
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to search breweries")
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -1685,7 +1687,7 @@ func TestSearchBreweries_QuerySyntaxError(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1701,7 +1703,7 @@ func TestSearchBreweries_QuerySyntaxError(t *testing.T) {
 	ctx := context.Background()
 	results, err := service.SearchBreweries(ctx, query)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to search breweries")
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -1714,7 +1716,7 @@ func TestSearchBreweries_SingleCharacterSearch(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "A",
 		Limit: 20,
 	}
@@ -1749,7 +1751,7 @@ func TestSearchBreweries_StateFilter(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		State: "California",
 		Limit: 20,
 	}
@@ -1757,10 +1759,10 @@ func TestSearchBreweries_StateFilter(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[1].ID, mockBreweryData[1].Name, mockBreweryData[1].BreweryType,
-		mockBreweryData[1].Street, mockBreweryData[1].City, mockBreweryData[1].State,
-		mockBreweryData[1].PostalCode, mockBreweryData[1].Country, mockBreweryData[1].Phone,
-		mockBreweryData[1].Website,
+		getMockBreweryData()[1].ID, getMockBreweryData()[1].Name, getMockBreweryData()[1].BreweryType,
+		getMockBreweryData()[1].Street, getMockBreweryData()[1].City, getMockBreweryData()[1].State,
+		getMockBreweryData()[1].PostalCode, getMockBreweryData()[1].Country, getMockBreweryData()[1].Phone,
+		getMockBreweryData()[1].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -1786,7 +1788,7 @@ func TestSearchBreweries_CountryFilter(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Country: "South Africa",
 		Limit:   20,
 	}
@@ -1794,10 +1796,10 @@ func TestSearchBreweries_CountryFilter(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "name", "brewery_type", "street", "city", "state", "postal_code", "country", "phone", "website_url",
 	}).AddRow(
-		mockBreweryData[0].ID, mockBreweryData[0].Name, mockBreweryData[0].BreweryType,
-		mockBreweryData[0].Street, mockBreweryData[0].City, mockBreweryData[0].State,
-		mockBreweryData[0].PostalCode, mockBreweryData[0].Country, mockBreweryData[0].Phone,
-		mockBreweryData[0].Website,
+		getMockBreweryData()[0].ID, getMockBreweryData()[0].Name, getMockBreweryData()[0].BreweryType,
+		getMockBreweryData()[0].Street, getMockBreweryData()[0].City, getMockBreweryData()[0].State,
+		getMockBreweryData()[0].PostalCode, getMockBreweryData()[0].Country, getMockBreweryData()[0].Phone,
+		getMockBreweryData()[0].Website,
 	)
 
 	expectedSQL := `SELECT id, name, brewery_type, street, city, state, postal_code, country, phone, website_url
@@ -1824,7 +1826,7 @@ func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "Test",
 		Limit: 20,
 	}
@@ -1860,12 +1862,12 @@ func BenchmarkSearchBreweries_SingleField(b *testing.B) {
 func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 	tests := []struct {
 		name     string
-		query    BrewerySearchQuery
-		expected BrewerySearchQuery
+		query    services.BrewerySearchQuery
+		expected services.BrewerySearchQuery
 	}{
 		{
 			name: "all valid fields",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:     "Stone",
 				Location: "California",
 				City:     "Escondido",
@@ -1873,7 +1875,7 @@ func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 				Country:  "USA",
 				Limit:    50,
 			},
-			expected: BrewerySearchQuery{
+			expected: services.BrewerySearchQuery{
 				Name:     "Stone",
 				Location: "California",
 				City:     "Escondido",
@@ -1884,22 +1886,22 @@ func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 		},
 		{
 			name: "limit boundary correction",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Test",
 				Limit: -10,
 			},
-			expected: BrewerySearchQuery{
+			expected: services.BrewerySearchQuery{
 				Name:  "Test",
 				Limit: 20, // Should be corrected
 			},
 		},
 		{
 			name: "limit too high correction",
-			query: BrewerySearchQuery{
+			query: services.BrewerySearchQuery{
 				Name:  "Test",
 				Limit: 1000,
 			},
-			expected: BrewerySearchQuery{
+			expected: services.BrewerySearchQuery{
 				Name:  "Test",
 				Limit: 20, // Should be corrected
 			},
@@ -1925,7 +1927,7 @@ func TestBrewerySearchQuery_ValidationLogic(t *testing.T) {
 
 // Test struct field completeness and types.
 func TestBrewerySearchResult_StructIntegrity(t *testing.T) {
-	brewery := BrewerySearchResult{
+	brewery := services.BrewerySearchResult{
 		ID:          123,
 		Name:        "Test Brewery",
 		BreweryType: "micro",
@@ -1970,7 +1972,7 @@ func TestSearchBreweries_EmptyDatabase(t *testing.T) {
 
 	service := setupBreweryService(db)
 
-	query := BrewerySearchQuery{
+	query := services.BrewerySearchQuery{
 		Name:  "AnyName",
 		Limit: 20,
 	}

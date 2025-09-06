@@ -1,4 +1,4 @@
-package models
+package models_test
 
 import (
 	"database/sql"
@@ -8,16 +8,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CharlRitter/brewsource-mcp/app/internal/models"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Test StringArray type implementation.
+// Test models.StringArray type implementation.
 func TestStringArray_Scan(t *testing.T) {
 	tests := []struct {
 		name      string
 		value     interface{}
-		expected  StringArray
+		expected  models.StringArray
 		expectErr bool
 	}{
 		{
@@ -28,27 +31,27 @@ func TestStringArray_Scan(t *testing.T) {
 		{
 			name:     "scan empty json array as bytes",
 			value:    []byte("[]"),
-			expected: StringArray{},
+			expected: models.StringArray{},
 		},
 		{
 			name:     "scan json array as bytes",
 			value:    []byte(`["item1", "item2", "item3"]`),
-			expected: StringArray{"item1", "item2", "item3"},
+			expected: models.StringArray{"item1", "item2", "item3"},
 		},
 		{
 			name:     "scan json array as string",
 			value:    `["beer", "brewing", "hops"]`,
-			expected: StringArray{"beer", "brewing", "hops"},
+			expected: models.StringArray{"beer", "brewing", "hops"},
 		},
 		{
 			name:     "scan empty string array",
 			value:    `[]`,
-			expected: StringArray{},
+			expected: models.StringArray{},
 		},
 		{
 			name:     "scan single item array",
 			value:    `["single"]`,
-			expected: StringArray{"single"},
+			expected: models.StringArray{"single"},
 		},
 		// Error cases
 		{
@@ -70,16 +73,16 @@ func TestStringArray_Scan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var s StringArray
+			var s models.StringArray
 			err := s.Scan(tt.value)
 
 			if (err != nil) != tt.expectErr {
-				t.Errorf("StringArray.Scan() error = %v, expectErr = %v", err, tt.expectErr)
+				t.Errorf("models.StringArray.Scan() error = %v, expectErr = %v", err, tt.expectErr)
 				return
 			}
 
 			if !tt.expectErr && !reflect.DeepEqual(s, tt.expected) {
-				t.Errorf("StringArray.Scan() = %v, want %v", s, tt.expected)
+				t.Errorf("models.StringArray.Scan() = %v, want %v", s, tt.expected)
 			}
 		})
 	}
@@ -88,33 +91,33 @@ func TestStringArray_Scan(t *testing.T) {
 func TestStringArray_Value(t *testing.T) {
 	tests := []struct {
 		name      string
-		array     StringArray
+		array     models.StringArray
 		expected  driver.Value
 		expectErr bool
 	}{
 		{
 			name:     "nil array",
 			array:    nil,
-			expected: nil,
+			expected: "[]",
 		},
 		{
 			name:     "empty array",
-			array:    StringArray{},
-			expected: []byte("[]"),
+			array:    models.StringArray{},
+			expected: "[]",
 		},
 		{
 			name:     "single item array",
-			array:    StringArray{"item1"},
+			array:    models.StringArray{"item1"},
 			expected: []byte(`["item1"]`),
 		},
 		{
 			name:     "multiple items array",
-			array:    StringArray{"item1", "item2", "item3"},
+			array:    models.StringArray{"item1", "item2", "item3"},
 			expected: []byte(`["item1","item2","item3"]`),
 		},
 		{
 			name:     "array with special characters",
-			array:    StringArray{"item with spaces", "item\nwith\nnewlines", "item\"with\"quotes"},
+			array:    models.StringArray{"item with spaces", "item\nwith\nnewlines", "item\"with\"quotes"},
 			expected: []byte(`["item with spaces","item\nwith\nnewlines","item\"with\"quotes"]`),
 		},
 	}
@@ -123,36 +126,37 @@ func TestStringArray_Value(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			value, err := tt.array.Value()
 
-			if (err != nil) != tt.expectErr {
-				t.Errorf("StringArray.Value() error = %v, expectErr = %v", err, tt.expectErr)
+			if tt.expectErr {
+				assert.Error(t, err)
 				return
 			}
 
-			if !tt.expectErr {
-				if tt.expected == nil && value != nil {
-					t.Errorf("StringArray.Value() = %v, want nil", value)
-					return
-				}
-				if tt.expected != nil && value == nil {
-					t.Errorf("StringArray.Value() = nil, want %v", tt.expected)
-					return
-				}
-				if tt.expected != nil && value != nil {
-					expectedBytes, _ := tt.expected.([]byte)
-					actualBytes, _ := value.([]byte)
-					if !reflect.DeepEqual(actualBytes, expectedBytes) {
-						t.Errorf("StringArray.Value() = %s, want %s", actualBytes, expectedBytes)
-					}
-				}
-			}
+			require.NoError(t, err)
+			assertValueEquals(t, tt.expected, value)
 		})
 	}
 }
 
-// Test Beer model structure and JSON marshaling.
+// Helper function to reduce complexity.
+func assertValueEquals(t *testing.T, expected, actual driver.Value) {
+	t.Helper()
+
+	switch exp := expected.(type) {
+	case string:
+		assert.Equal(t, exp, actual)
+	case []byte:
+		actualBytes, ok := actual.([]byte)
+		require.True(t, ok, "expected actual value to be []byte")
+		assert.Equal(t, exp, actualBytes)
+	default:
+		assert.Equal(t, expected, actual)
+	}
+}
+
+// Test models.Beer model structure and JSON marshaling.
 func TestBeer_JSONMarshaling(t *testing.T) {
 	now := time.Now().UTC()
-	beer := Beer{
+	beer := models.Beer{
 		ID:          1,
 		Name:        "Test IPA",
 		BreweryID:   10,
@@ -172,7 +176,7 @@ func TestBeer_JSONMarshaling(t *testing.T) {
 	}
 
 	// Test unmarshaling
-	var unmarshaled Beer
+	var unmarshaled models.Beer
 	err = json.Unmarshal(data, &unmarshaled)
 	if err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
@@ -205,12 +209,12 @@ func TestBeer_JSONMarshaling(t *testing.T) {
 	}
 }
 
-// Test Brewery model structure and JSON marshaling.
+// Test models.Brewery model structure and JSON marshaling.
 func TestBrewery_JSONMarshaling(t *testing.T) {
 	now := time.Now().UTC()
-	brewery := Brewery{
+	brewery := models.Brewery{
 		ID:          1,
-		Name:        "Test Brewery",
+		Name:        "Test models.Brewery",
 		BreweryType: "micro",
 		Street:      "123 Test Street",
 		City:        "Test City",
@@ -230,7 +234,7 @@ func TestBrewery_JSONMarshaling(t *testing.T) {
 	}
 
 	// Test unmarshaling
-	var unmarshaled Brewery
+	var unmarshaled models.Brewery
 	err = json.Unmarshal(data, &unmarshaled)
 	if err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
@@ -318,28 +322,28 @@ func TestMigrateDatabase(t *testing.T) {
 			sqlxDB := sqlx.NewDb(db, "postgres")
 			tt.setupMock(mock)
 
-			err = MigrateDatabase(sqlxDB)
+			err = models.MigrateDatabase(sqlxDB)
 
 			if (err != nil) != tt.expectErr {
 				t.Errorf("MigrateDatabase() error = %v, expectErr = %v", err, tt.expectErr)
 			}
 
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("Unfulfilled expectations: %s", err)
+			if mockErr := mock.ExpectationsWereMet(); mockErr != nil {
+				t.Errorf("Unfulfilled expectations: %s", mockErr)
 			}
 		})
 	}
 }
 
-// Test edge cases for Beer model.
+// Test edge cases for models.Beer model.
 func TestBeer_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
-		beer Beer
+		beer models.Beer
 	}{
 		{
 			name: "beer with zero values",
-			beer: Beer{
+			beer: models.Beer{
 				ID:        0,
 				Name:      "",
 				BreweryID: 0,
@@ -351,9 +355,9 @@ func TestBeer_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "beer with maximum values",
-			beer: Beer{
+			beer: models.Beer{
 				ID:        2147483647, // max int32
-				Name:      "Very Long Beer Name That Exceeds Normal Length Limits",
+				Name:      "Very Long models.Beer Name That Exceeds Normal Length Limits",
 				BreweryID: 2147483647,
 				Style:     "Very Long Style Name That Might Exceed Database Limits",
 				ABV:       99.99, // theoretical maximum ABV
@@ -363,8 +367,8 @@ func TestBeer_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "beer with special characters",
-			beer: Beer{
-				Name:        "Beer with Special Characters: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
+			beer: models.Beer{
+				Name:        "models.Beer with Special Characters: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
 				Style:       "Style with Ümlåuts and Açcénts",
 				Description: "Description with\nnewlines\tand\ttabs",
 			},
@@ -380,7 +384,7 @@ func TestBeer_EdgeCases(t *testing.T) {
 			}
 
 			// Test unmarshaling works
-			var unmarshaled Beer
+			var unmarshaled models.Beer
 			err = json.Unmarshal(data, &unmarshaled)
 			if err != nil {
 				t.Errorf("json.Unmarshal() error = %v", err)
@@ -394,15 +398,15 @@ func TestBeer_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test edge cases for Brewery model.
+// Test edge cases for models.Brewery model.
 func TestBrewery_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string
-		brewery Brewery
+		brewery models.Brewery
 	}{
 		{
 			name: "brewery with empty values",
-			brewery: Brewery{
+			brewery: models.Brewery{
 				Name:        "",
 				BreweryType: "",
 				Street:      "",
@@ -416,9 +420,9 @@ func TestBrewery_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "brewery with very long values",
-			brewery: Brewery{
-				Name:        "Very Long Brewery Name That Might Exceed Normal Database Field Limits",
-				BreweryType: "Very Long Brewery Type",
+			brewery: models.Brewery{
+				Name:        "Very Long models.Brewery Name That Might Exceed Normal Database Field Limits",
+				BreweryType: "Very Long models.Brewery Type",
 				Street:      "Very Long Street Address That Includes Multiple Lines And Apartment Numbers",
 				City:        "Very Long City Name",
 				State:       "Very Long State Or Province Name",
@@ -430,7 +434,7 @@ func TestBrewery_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "brewery with international characters",
-			brewery: Brewery{
+			brewery: models.Brewery{
 				Name:    "Bräuerei München",
 				City:    "São Paulo",
 				State:   "Zürich",
@@ -439,7 +443,7 @@ func TestBrewery_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "brewery with special URLs and phone formats",
-			brewery: Brewery{
+			brewery: models.Brewery{
 				Phone:      "+27-21-123-4567",
 				WebsiteURL: "https://test.co.za/path?param=value&other=123",
 			},
@@ -455,7 +459,7 @@ func TestBrewery_EdgeCases(t *testing.T) {
 			}
 
 			// Test unmarshaling works
-			var unmarshaled Brewery
+			var unmarshaled models.Brewery
 			err = json.Unmarshal(data, &unmarshaled)
 			if err != nil {
 				t.Errorf("json.Unmarshal() error = %v", err)
@@ -469,33 +473,33 @@ func TestBrewery_EdgeCases(t *testing.T) {
 	}
 }
 
-// Test StringArray with edge cases.
+// Test models.StringArray with edge cases.
 func TestStringArray_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    interface{}
-		expected StringArray
+		expected models.StringArray
 		hasError bool
 	}{
 		{
 			name:     "very large array",
 			input:    `["item1", "item2", "item3", "item4", "item5"]`,
-			expected: StringArray{"item1", "item2", "item3", "item4", "item5"},
+			expected: models.StringArray{"item1", "item2", "item3", "item4", "item5"},
 		},
 		{
 			name:     "array with unicode characters",
 			input:    `["🍺", "🍻", "bière", "çerveza", "пиво"]`,
-			expected: StringArray{"🍺", "🍻", "bière", "çerveza", "пиво"},
+			expected: models.StringArray{"🍺", "🍻", "bière", "çerveza", "пиво"},
 		},
 		{
 			name:     "array with nested quotes",
 			input:    `["He said \"hello\"", "It's a test", "Multiple \"quotes\" here"]`,
-			expected: StringArray{`He said "hello"`, "It's a test", `Multiple "quotes" here`},
+			expected: models.StringArray{`He said "hello"`, "It's a test", `Multiple "quotes" here`},
 		},
 		{
 			name:     "array with control characters",
 			input:    `["line1\nline2", "tab\there", "carriage\rreturn"]`,
-			expected: StringArray{"line1\nline2", "tab\there", "carriage\rreturn"},
+			expected: models.StringArray{"line1\nline2", "tab\there", "carriage\rreturn"},
 		},
 		{
 			name:     "malformed JSON with missing bracket",
@@ -511,7 +515,7 @@ func TestStringArray_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var s StringArray
+			var s models.StringArray
 			err := s.Scan(tt.input)
 
 			if tt.hasError {
@@ -523,7 +527,7 @@ func TestStringArray_EdgeCases(t *testing.T) {
 					t.Errorf("Unexpected error: %v", err)
 				}
 				if !reflect.DeepEqual(s, tt.expected) {
-					t.Errorf("StringArray.Scan() = %v, want %v", s, tt.expected)
+					t.Errorf("models.StringArray.Scan() = %v, want %v", s, tt.expected)
 				}
 			}
 		})
@@ -536,7 +540,7 @@ func BenchmarkStringArray_Scan(b *testing.B) {
 
 	b.ResetTimer()
 	for range b.N {
-		var s StringArray
+		var s models.StringArray
 		err := s.Scan(jsonData)
 		if err != nil {
 			b.Fatalf("Unexpected error: %v", err)
@@ -545,7 +549,7 @@ func BenchmarkStringArray_Scan(b *testing.B) {
 }
 
 func BenchmarkStringArray_Value(b *testing.B) {
-	s := StringArray{"beer", "brewing", "hops", "malt", "yeast", "water", "fermentation"}
+	s := models.StringArray{"beer", "brewing", "hops", "malt", "yeast", "water", "fermentation"}
 
 	b.ResetTimer()
 	for range b.N {
@@ -557,7 +561,7 @@ func BenchmarkStringArray_Value(b *testing.B) {
 }
 
 func BenchmarkBeer_JSONMarshal(b *testing.B) {
-	beer := Beer{
+	beer := models.Beer{
 		ID:          1,
 		Name:        "Test IPA",
 		BreweryID:   10,
@@ -581,9 +585,9 @@ func BenchmarkBeer_JSONMarshal(b *testing.B) {
 
 // Test database field tags.
 func TestModel_DatabaseTags(t *testing.T) {
-	beerType := reflect.TypeOf(Beer{})
+	beerType := reflect.TypeOf(models.Beer{})
 
-	// Test Beer struct tags
+	// Test models.Beer struct tags
 	expectedBeerTags := map[string]string{
 		"ID":          "id",
 		"Name":        "name",
@@ -600,7 +604,7 @@ func TestModel_DatabaseTags(t *testing.T) {
 	for fieldName, expectedTag := range expectedBeerTags {
 		field, found := beerType.FieldByName(fieldName)
 		if !found {
-			t.Errorf("Field %s not found in Beer struct", fieldName)
+			t.Errorf("Field %s not found in models.Beer struct", fieldName)
 			continue
 		}
 
@@ -610,8 +614,8 @@ func TestModel_DatabaseTags(t *testing.T) {
 		}
 	}
 
-	// Test Brewery struct tags
-	breweryType := reflect.TypeOf(Brewery{})
+	// Test models.Brewery struct tags
+	breweryType := reflect.TypeOf(models.Brewery{})
 	expectedBreweryTags := map[string]string{
 		"ID":          "id",
 		"Name":        "name",
@@ -630,7 +634,7 @@ func TestModel_DatabaseTags(t *testing.T) {
 	for fieldName, expectedTag := range expectedBreweryTags {
 		field, found := breweryType.FieldByName(fieldName)
 		if !found {
-			t.Errorf("Field %s not found in Brewery struct", fieldName)
+			t.Errorf("Field %s not found in models.Brewery struct", fieldName)
 			continue
 		}
 

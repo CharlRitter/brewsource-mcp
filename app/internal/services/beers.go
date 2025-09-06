@@ -82,20 +82,23 @@ func (s *BeerService) SearchBeers(ctx context.Context, query BeerSearchQuery) ([
 	if query.Limit > 0 {
 		q += " LIMIT $" + strconv.Itoa(argIdx)
 		args = append(args, query.Limit)
-		argIdx++
 	}
 
 	rows, err := s.db.QueryxContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if rows != nil {
+			_ = rows.Close()
+		}
+	}()
 
 	results := []*BeerSearchResult{}
 	for rows.Next() {
 		var r BeerSearchResult
-		if err := rows.Scan(&r.ID, &r.Name, &r.Style, &r.Brewery, &r.Country, &r.ABV, &r.IBU); err != nil {
-			return nil, err
+		if scanErr := rows.Scan(&r.ID, &r.Name, &r.Style, &r.Brewery, &r.Country, &r.ABV, &r.IBU); scanErr != nil {
+			return nil, scanErr
 		}
 		results = append(results, &r)
 	}

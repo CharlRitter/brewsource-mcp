@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+const (
+	// MinSearchLength defines the minimum length for a meaningful search term.
+	MinSearchLength = 2
+)
+
+// ErrSearchTermTooShort is returned when a search term is too short.
+var ErrSearchTermTooShort = errors.New("search term too short: minimum 2 characters required")
+
 // BJCPStyle represents a beer style from the BJCP guidelines.
 type BJCPStyle struct {
 	Code                      string   `json:"code"`
@@ -83,8 +91,8 @@ func LoadBJCPData() (*BJCPData, error) {
 	}
 
 	var bjcpData BJCPData
-	if err := json.Unmarshal(data, &bjcpData); err != nil {
-		return nil, fmt.Errorf("failed to parse BJCP data: %w", err)
+	if unmarshalErr := json.Unmarshal(data, &bjcpData); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse BJCP data: %w", unmarshalErr)
 	}
 
 	return &bjcpData, nil
@@ -125,12 +133,12 @@ func (s *BJCPService) GetStyleByName(name string) (*BJCPStyle, error) {
 	// Handle empty or whitespace-only strings
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" {
-		return nil, nil
+		return nil, errors.New("search term cannot be empty")
 	}
 
 	// Validate minimum search length for meaningful results
-	if len(trimmed) < 2 {
-		return nil, errors.New("search term too short: minimum 2 characters required")
+	if len(trimmed) < MinSearchLength {
+		return nil, ErrSearchTermTooShort
 	}
 
 	// Validate that search contains some alphabetic characters for beer style names

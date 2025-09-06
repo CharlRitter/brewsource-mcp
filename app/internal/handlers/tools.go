@@ -12,6 +12,13 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
 )
 
+const (
+	// defaultSearchLimit is the default number of results when no limit is specified.
+	defaultSearchLimit = 20
+	// maxSearchLimit is the maximum allowed number of results.
+	maxSearchLimit = 100
+)
+
 // ToolHandlers handles all MCP tool requests and implements ToolHandlerRegistry.
 type ToolHandlers struct {
 	bjcpData       *data.BJCPData
@@ -88,7 +95,7 @@ func isValidBJCPStyleCode(code string) bool {
 }
 
 // BJCPLookup handles BJCP style lookup functionality.
-func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
+func (h *ToolHandlers) BJCPLookup(_ context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 	styleCode, hasCode := args["style_code"].(string)
 	styleName, hasName := args["style_name"].(string)
 
@@ -125,23 +132,16 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 		}
 	}
 	if err != nil {
+		var lookupParam string
+		if hasCode {
+			lookupParam = styleCode
+		}
+		if hasName {
+			lookupParam = styleName
+		}
 		return nil, &mcp.Error{
-			Code: mcp.InvalidParams,
-			Message: fmt.Sprintf("BJCP style not found for: %s%s",
-				func() string {
-					if hasCode {
-						return styleCode
-					} else {
-						return ""
-					}
-				}(),
-				func() string {
-					if hasName {
-						return styleName
-					} else {
-						return ""
-					}
-				}()),
+			Code:    mcp.InvalidParams,
+			Message: fmt.Sprintf("BJCP style not found for: %s", lookupParam),
 		}
 	}
 	v := style.Vitals
@@ -200,6 +200,32 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 
 // SearchBeers handles beer search functionality.
 func (h *ToolHandlers) SearchBeers(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
+	query, err := h.parseBeerSearchQuery(args)
+	if err != nil {
+		return nil, err
+	}
+
+	if !h.hasAnyBeerSearchParam(query) {
+		return nil, &mcp.Error{
+			Code:    mcp.InvalidParams,
+			Message: "at least one search parameter is required (name, style, brewery, or location)",
+			Data: map[string]interface{}{
+				"provided_params": args,
+			},
+		}
+	}
+
+	// Perform the search
+	results, err := h.beerService.SearchBeers(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search beers: %w", err)
+	}
+
+	return h.formatBeerSearchResults(results)
+}
+
+// parseBeerSearchQuery extracts and validates search parameters for beer search.
+func (h *ToolHandlers) parseBeerSearchQuery(args map[string]interface{}) (services.BeerSearchQuery, error) {
 	query := services.BeerSearchQuery{}
 
 	// Extract search parameters
@@ -216,27 +242,43 @@ func (h *ToolHandlers) SearchBeers(ctx context.Context, args map[string]interfac
 		query.Location = location
 	}
 
-	// Validate limit
+	// Parse and validate limit
+	limit, err := h.parseLimit(args)
+	if err != nil {
+		return query, err
+	}
+	query.Limit = limit
+
+	return query, nil
+}
+
+// parseLimit extracts and validates the limit parameter from arguments.
+func (h *ToolHandlers) parseLimit(args map[string]interface{}) (int, error) {
+	var limit int
 	var limitSet bool
-	if limitFloat, ok1 := args["limit"].(float64); ok1 {
-		query.Limit = int(limitFloat)
+
+	switch v := args["limit"].(type) {
+	case float64:
+		limit = int(v)
 		limitSet = true
-	} else if limitInt, ok2 := args["limit"].(int); ok2 {
-		query.Limit = limitInt
+	case int:
+		limit = v
 		limitSet = true
-	} else if limitStr, ok3 := args["limit"].(string); ok3 {
-		if limit, err := strconv.Atoi(limitStr); err == nil {
-			query.Limit = limit
-			limitSet = true
-		} else {
-			return nil, &mcp.Error{
+	case string:
+		parsedLimit, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, &mcp.Error{
 				Code:    mcp.InvalidParams,
 				Message: "limit must be an integer",
 			}
 		}
-	} else if args["limit"] != nil {
+		limit = parsedLimit
+		limitSet = true
+	case nil:
+		// No limit provided, use default
+	default:
 		// Provided but not a valid type
-		return nil, &mcp.Error{
+		return 0, &mcp.Error{
 			Code:    mcp.InvalidParams,
 			Message: "limit must be an integer",
 		}
@@ -244,38 +286,31 @@ func (h *ToolHandlers) SearchBeers(ctx context.Context, args map[string]interfac
 
 	// Default limit if not set
 	if !limitSet {
-		query.Limit = 20
+		limit = defaultSearchLimit
 	}
 
 	// Validate limit range
-	if query.Limit <= 0 {
-		return nil, &mcp.Error{
+	if limit <= 0 {
+		return 0, &mcp.Error{
 			Code:    mcp.InvalidParams,
 			Message: "limit must be greater than zero",
 		}
 	}
-	if query.Limit > 100 {
+	if limit > maxSearchLimit {
 		// Cap at maximum limit instead of returning error
-		query.Limit = 100
+		limit = maxSearchLimit
 	}
 
-	// Check if any search criteria provided
-	if query.Name == "" && query.Style == "" && query.Brewery == "" && query.Location == "" {
-		return nil, &mcp.Error{
-			Code:    mcp.InvalidParams,
-			Message: "at least one search parameter is required (name, style, brewery, or location)",
-			Data: map[string]interface{}{
-				"provided_params": args,
-			},
-		}
-	}
+	return limit, nil
+}
 
-	// Perform the search
-	results, err := h.beerService.SearchBeers(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search beers: %w", err)
-	}
+// hasAnyBeerSearchParam checks if any search criteria are provided.
+func (h *ToolHandlers) hasAnyBeerSearchParam(query services.BeerSearchQuery) bool {
+	return query.Name != "" || query.Style != "" || query.Brewery != "" || query.Location != ""
+}
 
+// formatBeerSearchResults formats the search results for display.
+func (h *ToolHandlers) formatBeerSearchResults(results []*services.BeerSearchResult) (*mcp.ToolResult, error) {
 	if len(results) == 0 {
 		return &mcp.ToolResult{
 			Content: []mcp.ToolContent{{
@@ -361,8 +396,8 @@ func parseBrewerySearchQuery(args map[string]interface{}) services.BrewerySearch
 			query.Limit = limit
 		}
 	}
-	if query.Limit <= 0 || query.Limit > 100 {
-		query.Limit = 20
+	if query.Limit <= 0 || query.Limit > maxSearchLimit {
+		query.Limit = defaultSearchLimit
 	}
 	return query
 }

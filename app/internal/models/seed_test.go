@@ -1,12 +1,12 @@
-package models
+package models_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	"github.com/CharlRitter/brewsource-mcp/app/internal/models"
 	"github.com/jmoiron/sqlx"
-	// Assuming you're using a testing database driver like sqlite for tests.
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +73,7 @@ func teardownTestDB(t *testing.T, db *sqlx.DB) {
 
 // SQLite-compatible helper functions for testing
 
-func insertBreweriesForTest(ctx context.Context, db *sqlx.DB, breweries []Brewery) error {
+func insertBreweriesForTest(ctx context.Context, db *sqlx.DB, breweries []models.Brewery) error {
 	for _, brewery := range breweries {
 		query := `
 			INSERT INTO breweries (
@@ -91,11 +91,11 @@ func insertBreweriesForTest(ctx context.Context, db *sqlx.DB, breweries []Brewer
 	return nil
 }
 
-func insertBeersForTest(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []seedBeer) error {
+func insertBeersForTest(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []models.SeedBeer) error {
 	for _, beer := range beers {
 		breweryID, exists := breweries[beer.BreweryName]
 		if !exists {
-			logrus.Warnf("Brewery not found: %s, skipping beer: %s", beer.BreweryName, beer.Name)
+			logrus.Warnf("models.Brewery not found: %s, skipping beer: %s", beer.BreweryName, beer.Name)
 			continue
 		}
 		query := `
@@ -121,10 +121,10 @@ func TestSeedDatabase_HappyPath(t *testing.T) {
 		defer teardownTestDB(t, db)
 
 		// When
-		err := SeedDatabase(db)
+		err := models.SeedDatabase(db)
 
 		// Then
-		require.NoError(t, err, "SeedDatabase should not return an error")
+		require.NoError(t, err, "models.SeedDatabase should not return an error")
 
 		// Verify breweries were seeded
 		var breweryCount int
@@ -157,9 +157,9 @@ func TestSeedDatabase_Idempotency(t *testing.T) {
 		defer teardownTestDB(t, db)
 
 		// When - seed multiple times
-		err1 := SeedDatabase(db)
-		err2 := SeedDatabase(db)
-		err3 := SeedDatabase(db)
+		err1 := models.SeedDatabase(db)
+		err2 := models.SeedDatabase(db)
+		err3 := models.SeedDatabase(db)
 
 		// Then
 		require.NoError(t, err1, "First seeding should not return an error")
@@ -186,15 +186,15 @@ func TestSeedDatabase_DatabaseConnectionError(t *testing.T) {
 		db.Close() // Close the connection to simulate connection error
 
 		// When
-		err := SeedDatabase(db)
+		err := models.SeedDatabase(db)
 
 		// Then
-		assert.Error(t, err, "Should return error when database connection is invalid")
+		require.Error(t, err, "Should return error when database connection is invalid")
 		assert.Contains(t, err.Error(), "failed to seed breweries", "Error should indicate brewery seeding failure")
 	})
 }
 
-// Test Suite for seedBreweries function
+// Test Suite for SeedBreweries function
 
 func TestSeedBreweries_HappyPath(t *testing.T) {
 	t.Run("should seed breweries successfully when table is empty", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestSeedBreweries_HappyPath(t *testing.T) {
 		ctx := context.Background()
 
 		// When - use test-specific insert function
-		breweries := getSeedBreweries()
+		breweries := models.GetSeedBreweries()
 		err := insertBreweriesForTest(ctx, db, breweries)
 
 		// Then
@@ -217,7 +217,7 @@ func TestSeedBreweries_HappyPath(t *testing.T) {
 		assert.Equal(t, 8, count, "Should have inserted 8 breweries")
 
 		// Verify specific brewery data
-		var brewery Brewery
+		var brewery models.Brewery
 		err = db.Get(&brewery, "SELECT * FROM breweries WHERE name = ?", "Devil's Peak Brewing Company")
 		require.NoError(t, err)
 		assert.Equal(t, "micro", brewery.BreweryType)
@@ -236,14 +236,14 @@ func TestSeedBreweries_SkipWhenDataExists(t *testing.T) {
 
 		// Insert one brewery manually
 		_, err := db.Exec("INSERT INTO breweries (name, brewery_type, city, country) VALUES (?, ?, ?, ?)",
-			"Test Brewery", "micro", "Test City", "Test Country")
+			"Test models.Brewery", "micro", "Test City", "Test Country")
 		require.NoError(t, err)
 
 		// When
-		err = seedBreweries(ctx, db)
+		err = models.SeedBreweries(ctx, db)
 
 		// Then
-		require.NoError(t, err, "seedBreweries should not return an error")
+		require.NoError(t, err, "models.SeedBreweries should not return an error")
 
 		// Verify count remains 1 (only the manually inserted brewery)
 		var count int
@@ -263,14 +263,14 @@ func TestSeedBreweries_DatabaseError(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		err = seedBreweries(ctx, db)
+		err = models.SeedBreweries(ctx, db)
 
 		// Then
 		assert.Error(t, err, "Should return error when breweries table doesn't exist")
 	})
 }
 
-// Test Suite for seedBeers function
+// Test Suite for SeedBeers function
 
 func TestSeedBeers_HappyPath(t *testing.T) {
 	t.Run("should seed beers successfully when table is empty", func(t *testing.T) {
@@ -280,16 +280,16 @@ func TestSeedBeers_HappyPath(t *testing.T) {
 		ctx := context.Background()
 
 		// Seed breweries first using test function
-		breweries := getSeedBreweries()
+		breweries := models.GetSeedBreweries()
 		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
 
 		// Get brewery IDs
-		breweryIDs, err := getBreweryIDs(ctx, db)
+		breweryIDs, err := models.GetBreweryIDs(ctx, db)
 		require.NoError(t, err)
 
 		// When
-		beers := getSeedBeers()
+		beers := models.GetSeedBeers()
 		err = insertBeersForTest(ctx, db, breweryIDs, beers)
 
 		// Then
@@ -317,9 +317,9 @@ func TestSeedBeers_HappyPath(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Equal(t, "American IPA", beer.Style)
-		assert.Equal(t, 6.0, beer.ABV)
+		assert.InDelta(t, 6.0, beer.ABV, 0.01)
 		assert.Equal(t, 52, beer.IBU)
-		assert.Equal(t, 10.0, beer.SRM)
+		assert.InDelta(t, 10.0, beer.SRM, 0.01)
 		assert.Contains(t, beer.Description, "bold, hop-forward IPA")
 	})
 }
@@ -332,7 +332,7 @@ func TestSeedBeers_SkipWhenDataExists(t *testing.T) {
 		ctx := context.Background()
 
 		// Seed breweries first using test function
-		breweries := getSeedBreweries()
+		breweries := models.GetSeedBreweries()
 		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
 
@@ -341,10 +341,10 @@ func TestSeedBeers_SkipWhenDataExists(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		err = seedBeers(ctx, db)
+		err = models.SeedBeers(ctx, db)
 
 		// Then
-		require.NoError(t, err, "seedBeers should not return an error")
+		require.NoError(t, err, "models.SeedBeers should not return an error")
 
 		// Verify count remains 1
 		var count int
@@ -363,10 +363,10 @@ func TestSeedBeers_NoBreweriesExist(t *testing.T) {
 		// Note: Not seeding breweries first
 
 		// When
-		err := seedBeers(ctx, db)
+		err := models.SeedBeers(ctx, db)
 
 		// Then
-		require.NoError(t, err, "seedBeers should not return an error even when no breweries exist")
+		require.NoError(t, err, "models.SeedBeers should not return an error even when no breweries exist")
 
 		// Verify no beers were inserted
 		var count int
@@ -381,27 +381,27 @@ func TestSeedBeers_NoBreweriesExist(t *testing.T) {
 func TestGetSeedBreweries_DataValidation(t *testing.T) {
 	t.Run("should return valid brewery data", func(t *testing.T) {
 		// When
-		breweries := getSeedBreweries()
+		breweries := models.GetSeedBreweries()
 
 		// Then
 		assert.Len(t, breweries, 8, "Should return 8 breweries")
 
 		// Validate each brewery has required fields
 		for i, brewery := range breweries {
-			assert.NotEmpty(t, brewery.Name, "Brewery %d should have a name", i)
-			assert.NotEmpty(t, brewery.BreweryType, "Brewery %d should have a type", i)
-			assert.NotEmpty(t, brewery.City, "Brewery %d should have a city", i)
-			assert.NotEmpty(t, brewery.State, "Brewery %d should have a state", i)
-			assert.NotEmpty(t, brewery.Country, "Brewery %d should have a country", i)
+			assert.NotEmpty(t, brewery.Name, "models.Brewery %d should have a name", i)
+			assert.NotEmpty(t, brewery.BreweryType, "models.Brewery %d should have a type", i)
+			assert.NotEmpty(t, brewery.City, "models.Brewery %d should have a city", i)
+			assert.NotEmpty(t, brewery.State, "models.Brewery %d should have a state", i)
+			assert.NotEmpty(t, brewery.Country, "models.Brewery %d should have a country", i)
 
 			// Validate brewery type
-			assert.Equal(t, "micro", brewery.BreweryType, "Brewery %d should be 'micro' type", i)
+			assert.Equal(t, "micro", brewery.BreweryType, "models.Brewery %d should be 'micro' type", i)
 
 			// Validate country
-			assert.Equal(t, "South Africa", brewery.Country, "Brewery %d should be in South Africa", i)
+			assert.Equal(t, "South Africa", brewery.Country, "models.Brewery %d should be in South Africa", i)
 
 			// Validate state
-			assert.Equal(t, "Western Cape", brewery.State, "Brewery %d should be in Western Cape", i)
+			assert.Equal(t, "Western Cape", brewery.State, "models.Brewery %d should be in Western Cape", i)
 		}
 	})
 }
@@ -409,7 +409,7 @@ func TestGetSeedBreweries_DataValidation(t *testing.T) {
 func TestGetSeedBeers_DataValidation(t *testing.T) {
 	t.Run("should return valid beer data", func(t *testing.T) {
 		// When
-		beers := getSeedBeers()
+		beers := models.GetSeedBeers()
 
 		// Then
 		assert.Len(t, beers, 8, "Should return 8 beers")
@@ -439,8 +439,8 @@ func TestGetSeedBeers_DataValidation(t *testing.T) {
 func TestGetSeedBeers_BreweryMapping(t *testing.T) {
 	t.Run("should map beers to valid breweries", func(t *testing.T) {
 		// Given
-		breweries := getSeedBreweries()
-		beers := getSeedBeers()
+		breweries := models.GetSeedBreweries()
+		beers := models.GetSeedBeers()
 
 		// Create a map of brewery names
 		breweryNames := make(map[string]bool)
@@ -464,21 +464,21 @@ func TestGetBreweryIDs_HappyPath(t *testing.T) {
 		ctx := context.Background()
 
 		// Seed breweries first using test function
-		breweries := getSeedBreweries()
+		breweries := models.GetSeedBreweries()
 		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
 
 		// When
-		breweryIDs, err := getBreweryIDs(ctx, db)
+		breweryIDs, err := models.GetBreweryIDs(ctx, db)
 
 		// Then
-		require.NoError(t, err, "getBreweryIDs should not return an error")
+		require.NoError(t, err, "GetBreweryIDs should not return an error")
 		assert.Len(t, breweryIDs, 8, "Should return 8 brewery IDs")
 
 		// Verify specific brewery mapping
 		devilsPeakID, exists := breweryIDs["Devil's Peak Brewing Company"]
 		assert.True(t, exists, "Should find Devil's Peak Brewing Company")
-		assert.Positive(t, devilsPeakID, "Brewery ID should be positive")
+		assert.Positive(t, devilsPeakID, "models.Brewery ID should be positive")
 	})
 }
 
@@ -490,10 +490,10 @@ func TestGetBreweryIDs_EmptyDatabase(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		breweryIDs, err := getBreweryIDs(ctx, db)
+		breweryIDs, err := models.GetBreweryIDs(ctx, db)
 
 		// Then
-		require.NoError(t, err, "getBreweryIDs should not return an error")
+		require.NoError(t, err, "GetBreweryIDs should not return an error")
 		assert.Empty(t, breweryIDs, "Should return empty map when no breweries exist")
 	})
 }
@@ -506,7 +506,7 @@ func TestInsertBreweries_BoundaryCase(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		err := insertBreweriesForTest(ctx, db, []Brewery{})
+		err := insertBreweriesForTest(ctx, db, []models.Brewery{})
 
 		// Then
 		require.NoError(t, err, "insertBreweries should handle empty slice")
@@ -527,7 +527,7 @@ func TestInsertBeers_BoundaryCase(t *testing.T) {
 		ctx := context.Background()
 
 		// When
-		err := insertBeersForTest(ctx, db, make(map[string]int), []seedBeer{})
+		err := insertBeersForTest(ctx, db, make(map[string]int), []models.SeedBeer{})
 
 		// Then
 		require.NoError(t, err, "insertBeers should handle empty slice")
@@ -549,19 +549,19 @@ func TestInsertBeers_MissingBrewery(t *testing.T) {
 
 		// Insert an actual brewery into the database
 		_, err := db.Exec("INSERT INTO breweries (name, brewery_type, city, country) VALUES (?, ?, ?, ?)",
-			"Existing Brewery", "micro", "Test City", "Test Country")
+			"Existing models.Brewery", "micro", "Test City", "Test Country")
 		require.NoError(t, err)
 
 		// Create brewery mapping with the existing brewery
 		breweryIDs := map[string]int{
-			"Existing Brewery": 1, // This matches the ID from the insert above
+			"Existing models.Brewery": 1, // This matches the ID from the insert above
 		}
 
 		// Create beer data with both existing and non-existing brewery
-		testBeers := []seedBeer{
+		testBeers := []models.SeedBeer{
 			{
 				Name:        "Valid Beer",
-				BreweryName: "Existing Brewery",
+				BreweryName: "Existing models.Brewery",
 				Style:       "IPA",
 				ABV:         5.0,
 				IBU:         30,
@@ -570,7 +570,7 @@ func TestInsertBeers_MissingBrewery(t *testing.T) {
 			},
 			{
 				Name:        "Invalid Beer",
-				BreweryName: "Non-Existent Brewery",
+				BreweryName: "Non-Existent models.Brewery",
 				Style:       "Lager",
 				ABV:         4.0,
 				IBU:         20,
@@ -612,7 +612,7 @@ func TestSeedDatabase_ContextCancellation(t *testing.T) {
 		cancel() // Cancel immediately
 
 		// When
-		err := seedBreweries(ctx, db)
+		err := models.SeedBreweries(ctx, db)
 		// Then
 		// The behavior depends on the database driver and when the context is checked
 		// Some drivers may not immediately respect context cancellation
@@ -632,12 +632,12 @@ func TestSeedDatabase_LargeDataSet(t *testing.T) {
 		start := logrus.New().WithField("test", "timing")
 		start.Info("Starting seed performance test")
 
-		err := SeedDatabase(db)
+		err := models.SeedDatabase(db)
 
 		start.Info("Completed seed performance test")
 
 		// Then
-		require.NoError(t, err, "SeedDatabase should complete without error")
+		require.NoError(t, err, "models.SeedDatabase should complete without error")
 
 		// Verify all data was seeded correctly
 		var breweryCount, beerCount int
@@ -660,7 +660,7 @@ func TestSeedDatabase_FullIntegration(t *testing.T) {
 		defer teardownTestDB(t, db)
 
 		// When
-		err := SeedDatabase(db)
+		err := models.SeedDatabase(db)
 
 		// Then
 		require.NoError(t, err, "SeedDatabase should complete without error")

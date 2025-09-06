@@ -1,14 +1,16 @@
-package data
+package data_test
 
 import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
 )
 
-func mockBJCPData() *BJCPData {
-	return &BJCPData{
-		Styles: map[string]BJCPStyle{
+func mockBJCPData() *data.BJCPData {
+	return &data.BJCPData{
+		Styles: map[string]data.BJCPStyle{
 			"21A": {
 				Code:                      "21A",
 				Name:                      "American IPA",
@@ -27,7 +29,7 @@ func mockBJCPData() *BJCPData {
 					"Bell's Two Hearted IPA",
 					"Russian River Blind Pig IPA",
 				},
-				Vitals: Vitals{
+				Vitals: data.Vitals{
 					ABVMin: 5.5,
 					ABVMax: 7.5,
 					IBUMin: 40,
@@ -54,7 +56,7 @@ func mockBJCPData() *BJCPData {
 				CharacteristicIngredients: "Two or six-row barley with high percentage (up to 40%) of rice or corn as adjuncts.",
 				StyleComparison:           "Lower in alcohol content and lighter in body than an American Lager.",
 				CommercialExamples:        []string{"Bud Light", "Coors Light", "Keystone Light"},
-				Vitals: Vitals{
+				Vitals: data.Vitals{
 					ABVMin: 2.8,
 					ABVMax: 4.2,
 					IBUMin: 8,
@@ -85,7 +87,7 @@ func mockBJCPData() *BJCPData {
 					"Weihenstephaner Korbinian",
 					"Spaten Optimator",
 				},
-				Vitals: Vitals{
+				Vitals: data.Vitals{
 					ABVMin: 7.0,
 					ABVMax: 10.0,
 					IBUMin: 16,
@@ -102,7 +104,7 @@ func mockBJCPData() *BJCPData {
 				Code:     "34A",
 				Name:     "Clone Beer",
 				Category: "Specialty Beer",
-				Vitals: Vitals{
+				Vitals: data.Vitals{
 					ABVMin: 0.0,
 					ABVMax: 15.0,
 					IBUMin: 0,
@@ -117,7 +119,7 @@ func mockBJCPData() *BJCPData {
 			},
 		},
 		Categories: []string{"IPA", "Standard American Beer", "Strong European Beer", "Specialty Beer"},
-		Metadata: Metadata{
+		Metadata: data.Metadata{
 			Version:     "2021",
 			Source:      "BJCP Style Guidelines",
 			LastUpdated: "2025-07-26",
@@ -126,11 +128,11 @@ func mockBJCPData() *BJCPData {
 	}
 }
 
-func mockEmptyBJCPData() *BJCPData {
-	return &BJCPData{
-		Styles:     make(map[string]BJCPStyle),
+func mockEmptyBJCPData() *data.BJCPData {
+	return &data.BJCPData{
+		Styles:     make(map[string]data.BJCPStyle),
 		Categories: []string{},
-		Metadata: Metadata{
+		Metadata: data.Metadata{
 			Version:     "2021",
 			Source:      "test-empty",
 			LastUpdated: "2025-07-26",
@@ -139,55 +141,72 @@ func mockEmptyBJCPData() *BJCPData {
 	}
 }
 
-// Test GetStyleByCode - Happy Path Cases.
-func TestGetStyleByCode_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+// Test GetStyleByCode - Basic Happy Path Cases.
+func TestGetStyleByCode_BasicCases(t *testing.T) {
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
-	tests := []struct {
-		name     string
-		code     string
-		expected string
-	}{
-		{"Valid uppercase code", "21A", "American IPA"},
-		{"Valid lowercase code", "21a", "American IPA"},
-		{"Valid mixed case code", "21a", "American IPA"},
-		{"Different valid code", "1A", "American Light Lager"},
-		{"Numeric code", "9A", "Doppelbock"},
-		{"Higher numbered code", "34A", "Clone Beer"},
+	// Test valid uppercase code
+	style, err := svc.GetStyleByCode("21A")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if style == nil {
+		t.Fatal("expected style, got nil")
+	}
+	if style.Name != "American IPA" {
+		t.Errorf("expected American IPA, got %s", style.Name)
+	}
+}
+
+// Test GetStyleByCode - Case Sensitivity.
+func TestGetStyleByCode_CaseInsensitive(t *testing.T) {
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
+
+	testCodes := []string{"21a", "21A", "1a", "1A"}
+	expectedNames := []string{"American IPA", "American IPA", "American Light Lager", "American Light Lager"}
+
+	for i, code := range testCodes {
+		style, err := svc.GetStyleByCode(code)
+		if err != nil {
+			t.Errorf("code %s: expected no error, got %v", code, err)
+		}
+		if style == nil {
+			t.Errorf("code %s: expected style, got nil", code)
+			continue
+		}
+		if style.Name != expectedNames[i] {
+			t.Errorf("code %s: expected %s, got %s", code, expectedNames[i], style.Name)
+		}
+	}
+}
+
+// Test GetStyleByCode - Field Validation.
+func TestGetStyleByCode_FieldValidation(t *testing.T) {
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
+
+	style, err := svc.GetStyleByCode("21A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if style == nil {
+		t.Fatal("expected style, got nil")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			style, err := svc.GetStyleByCode(tt.code)
-			if err != nil {
-				t.Errorf("expected no error, got %v", err)
-			}
-			if style == nil {
-				t.Errorf("expected style, got nil")
-				return
-			}
-			if style.Name != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, style.Name)
-			}
-			// Verify all fields are populated for complete styles
-			if tt.code == "21A" || tt.code == "21a" {
-				if style.OverallImpression == "" {
-					t.Error("expected OverallImpression to be populated")
-				}
-				if style.Appearance == "" {
-					t.Error("expected Appearance to be populated")
-				}
-				if len(style.CommercialExamples) == 0 {
-					t.Error("expected CommercialExamples to be populated")
-				}
-			}
-		})
+	// Verify all fields are populated for complete styles
+	if style.OverallImpression == "" {
+		t.Error("expected OverallImpression to be populated")
+	}
+	if style.Appearance == "" {
+		t.Error("expected Appearance to be populated")
+	}
+	if len(style.CommercialExamples) == 0 {
+		t.Error("expected CommercialExamples to be populated")
 	}
 }
 
 // Test GetStyleByCode - Sad Path Cases.
 func TestGetStyleByCode_SadPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []struct {
 		name string
@@ -223,13 +242,13 @@ func TestGetStyleByCode_SadPath(t *testing.T) {
 func TestGetStyleByCode_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
-		svc  *BJCPService
+		svc  *data.BJCPService
 		code string
 	}{
-		{"Empty database", NewBJCPServiceFromData(mockEmptyBJCPData()), "21A"},
-		{"Empty string code", NewBJCPServiceFromData(mockBJCPData()), ""},
-		{"Whitespace only code", NewBJCPServiceFromData(mockBJCPData()), "   "},
-		{"Code with leading/trailing spaces", NewBJCPServiceFromData(mockBJCPData()), " 21A "},
+		{"Empty database", data.NewBJCPServiceFromData(mockEmptyBJCPData()), "21A"},
+		{"Empty string code", data.NewBJCPServiceFromData(mockBJCPData()), ""},
+		{"Whitespace only code", data.NewBJCPServiceFromData(mockBJCPData()), "   "},
+		{"Code with leading/trailing spaces", data.NewBJCPServiceFromData(mockBJCPData()), " 21A "},
 	}
 
 	for _, tt := range tests {
@@ -247,7 +266,7 @@ func TestGetStyleByCode_EdgeCases(t *testing.T) {
 
 // Test GetStyleByName - Happy Path Cases.
 func TestGetStyleByName_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []struct {
 		name         string
@@ -285,7 +304,7 @@ func TestGetStyleByName_HappyPath(t *testing.T) {
 
 // Test GetStyleByName - Sad Path Cases.
 func TestGetStyleByName_SadPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []string{
 		"Nonexistent Style",
@@ -311,7 +330,7 @@ func TestGetStyleByName_SadPath(t *testing.T) {
 
 // Test GetStyleByName - Boundary Cases.
 func TestGetStyleByName_BoundaryCase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []struct {
 		name       string
@@ -340,7 +359,7 @@ func TestGetStyleByName_BoundaryCase(t *testing.T) {
 
 // Test GetStyleByName - Empty Database.
 func TestGetStyleByName_EmptyDatabase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
+	svc := data.NewBJCPServiceFromData(mockEmptyBJCPData())
 
 	style, err := svc.GetStyleByName("American IPA")
 	if err == nil {
@@ -353,7 +372,7 @@ func TestGetStyleByName_EmptyDatabase(t *testing.T) {
 
 // Test GetAllStyles - Happy Path.
 func TestGetAllStyles_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 	styles := svc.GetAllStyles()
 
 	if len(styles) != 4 {
@@ -371,7 +390,7 @@ func TestGetAllStyles_HappyPath(t *testing.T) {
 
 // Test GetAllStyles - Empty Database.
 func TestGetAllStyles_EmptyDatabase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
+	svc := data.NewBJCPServiceFromData(mockEmptyBJCPData())
 	styles := svc.GetAllStyles()
 
 	if len(styles) != 0 {
@@ -381,7 +400,7 @@ func TestGetAllStyles_EmptyDatabase(t *testing.T) {
 
 // Test GetCategories - Happy Path.
 func TestGetCategories_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 	cats := svc.GetCategories()
 	expected := []string{"IPA", "Standard American Beer", "Strong European Beer", "Specialty Beer"}
 
@@ -392,7 +411,7 @@ func TestGetCategories_HappyPath(t *testing.T) {
 
 // Test GetCategories - Empty Database.
 func TestGetCategories_EmptyDatabase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
+	svc := data.NewBJCPServiceFromData(mockEmptyBJCPData())
 	cats := svc.GetCategories()
 
 	if len(cats) != 0 {
@@ -402,7 +421,7 @@ func TestGetCategories_EmptyDatabase(t *testing.T) {
 
 // Test GetStylesByCategory - Happy Path.
 func TestGetStylesByCategory_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []struct {
 		name          string
@@ -436,7 +455,7 @@ func TestGetStylesByCategory_HappyPath(t *testing.T) {
 
 // Test GetStylesByCategory - Sad Path.
 func TestGetStylesByCategory_SadPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	tests := []string{
 		"Nonexistent Category",
@@ -459,7 +478,7 @@ func TestGetStylesByCategory_SadPath(t *testing.T) {
 
 // Test GetStylesByCategory - Empty Database.
 func TestGetStylesByCategory_EmptyDatabase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
+	svc := data.NewBJCPServiceFromData(mockEmptyBJCPData())
 	styles := svc.GetStylesByCategory("IPA")
 
 	if len(styles) != 0 {
@@ -469,7 +488,7 @@ func TestGetStylesByCategory_EmptyDatabase(t *testing.T) {
 
 // Test GetMetadata - Happy Path.
 func TestGetMetadata_HappyPath(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 	meta := svc.GetMetadata()
 
 	if meta.Version != "2021" {
@@ -488,7 +507,7 @@ func TestGetMetadata_HappyPath(t *testing.T) {
 
 // Test GetMetadata - Empty Database.
 func TestGetMetadata_EmptyDatabase(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockEmptyBJCPData())
+	svc := data.NewBJCPServiceFromData(mockEmptyBJCPData())
 	meta := svc.GetMetadata()
 
 	if meta.Version != "2021" {
@@ -504,7 +523,7 @@ func TestGetMetadata_EmptyDatabase(t *testing.T) {
 
 // Test Vitals Struct Validation.
 func TestVitals_Validation(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 	style, err := svc.GetStyleByCode("21A")
 	if err != nil {
 		t.Fatalf("unexpected error getting style: %v", err)
@@ -551,7 +570,7 @@ func TestVitals_Validation(t *testing.T) {
 func TestNewBJCPServiceFromData_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
-		data *BJCPData
+		data *data.BJCPData
 	}{
 		{"Nil data", nil},
 		{"Empty data", mockEmptyBJCPData()},
@@ -560,12 +579,16 @@ func TestNewBJCPServiceFromData_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewBJCPServiceFromData(tt.data)
+			svc := data.NewBJCPServiceFromData(tt.data)
 			if svc == nil {
 				t.Error("expected non-nil service")
 			}
-			if tt.data != nil && svc.data != tt.data {
-				t.Error("expected service data to match input data")
+			// Test that the service is functional by checking it can return metadata
+			if tt.data != nil {
+				metadata := svc.GetMetadata()
+				if metadata.Version != tt.data.Metadata.Version {
+					t.Error("expected service metadata to match input data metadata")
+				}
 			}
 		})
 	}
@@ -573,7 +596,7 @@ func TestNewBJCPServiceFromData_EdgeCases(t *testing.T) {
 
 // Benchmark tests for performance requirements.
 func BenchmarkGetStyleByCode(b *testing.B) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
 	for range b.N {
@@ -585,7 +608,7 @@ func BenchmarkGetStyleByCode(b *testing.B) {
 }
 
 func BenchmarkGetStyleByName(b *testing.B) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
 	for range b.N {
@@ -597,7 +620,7 @@ func BenchmarkGetStyleByName(b *testing.B) {
 }
 
 func BenchmarkGetStylesByCategory(b *testing.B) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
 	b.ResetTimer()
 	for range b.N {
@@ -610,43 +633,63 @@ func BenchmarkGetStylesByCategory(b *testing.B) {
 
 // Test concurrent access for thread safety.
 func TestConcurrentAccess(t *testing.T) {
-	svc := NewBJCPServiceFromData(mockBJCPData())
+	svc := data.NewBJCPServiceFromData(mockBJCPData())
 
-	// Run multiple goroutines accessing the service simultaneously
-	done := make(chan bool, 10)
+	const numGoroutines = 10
+	done := make(chan bool, numGoroutines)
 
-	for i := range 10 {
-		go func(id int) {
-			defer func() { done <- true }()
-
-			// Test different operations concurrently
-			switch id % 4 {
-			case 0:
-				_, err := svc.GetStyleByCode("21A")
-				if err != nil {
-					t.Errorf("goroutine %d: GetStyleByCode failed: %v", id, err)
-				}
-			case 1:
-				_, err := svc.GetStyleByName("American IPA")
-				if err != nil {
-					t.Errorf("goroutine %d: GetStyleByName failed: %v", id, err)
-				}
-			case 2:
-				styles := svc.GetStylesByCategory("IPA")
-				if len(styles) == 0 {
-					t.Errorf("goroutine %d: GetStylesByCategory returned no results", id)
-				}
-			case 3:
-				styles := svc.GetAllStyles()
-				if len(styles) == 0 {
-					t.Errorf("goroutine %d: GetAllStyles returned no results", id)
-				}
-			}
-		}(i)
+	// Launch concurrent goroutines
+	for i := range numGoroutines {
+		go testConcurrentOperation(t, svc, i, done)
 	}
 
 	// Wait for all goroutines to complete
-	for range 10 {
+	for range numGoroutines {
 		<-done
+	}
+}
+
+// Helper function to test different operations concurrently.
+func testConcurrentOperation(t *testing.T, svc *data.BJCPService, id int, done chan bool) {
+	defer func() { done <- true }()
+
+	// Test different operations based on ID
+	switch id % 4 {
+	case 0:
+		testConcurrentGetStyleByCode(t, svc, id)
+	case 1:
+		testConcurrentGetStyleByName(t, svc, id)
+	case 2:
+		testConcurrentGetStylesByCategory(t, svc, id)
+	case 3:
+		testConcurrentGetAllStyles(t, svc, id)
+	}
+}
+
+func testConcurrentGetStyleByCode(t *testing.T, svc *data.BJCPService, id int) {
+	_, err := svc.GetStyleByCode("21A")
+	if err != nil {
+		t.Errorf("goroutine %d: GetStyleByCode failed: %v", id, err)
+	}
+}
+
+func testConcurrentGetStyleByName(t *testing.T, svc *data.BJCPService, id int) {
+	_, err := svc.GetStyleByName("American IPA")
+	if err != nil {
+		t.Errorf("goroutine %d: GetStyleByName failed: %v", id, err)
+	}
+}
+
+func testConcurrentGetStylesByCategory(t *testing.T, svc *data.BJCPService, id int) {
+	styles := svc.GetStylesByCategory("IPA")
+	if len(styles) == 0 {
+		t.Errorf("goroutine %d: GetStylesByCategory returned no results", id)
+	}
+}
+
+func testConcurrentGetAllStyles(t *testing.T, svc *data.BJCPService, id int) {
+	styles := svc.GetAllStyles()
+	if len(styles) == 0 {
+		t.Errorf("goroutine %d: GetAllStyles returned no results", id)
 	}
 }

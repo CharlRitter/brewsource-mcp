@@ -20,8 +20,8 @@ import (
 type mockBeerService struct{}
 
 func (m *mockBeerService) SearchBeers(
-	ctx context.Context,
-	query services.BeerSearchQuery,
+	_ context.Context,
+	_ services.BeerSearchQuery,
 ) ([]*services.BeerSearchResult, error) {
 	return nil, nil
 }
@@ -266,7 +266,6 @@ func TestMCP_ToolResult_ContentTypes(t *testing.T) {
 				Data: "base64encodeddata",
 			},
 		},
-		IsError: false,
 	}
 
 	if len(customResult.Content) != 2 {
