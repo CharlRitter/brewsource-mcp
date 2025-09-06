@@ -154,7 +154,7 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 #### Go Module Security
 ```bash
 # Check for known vulnerabilities
-go list -json -deps ./... | nancy sleuth
+go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 # Update dependencies
 go get -u ./...

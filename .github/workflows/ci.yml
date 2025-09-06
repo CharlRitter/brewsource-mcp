@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.23'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -55,7 +55,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.23'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -112,7 +112,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.23'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -262,7 +262,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.23'
 
       - name: Security Scan
         run: make security
@@ -289,6 +289,11 @@ jobs:
           fi
           if [[ "${{ needs.docker.result }}" != "success" ]]; then
             echo "Docker build/test failed"
+            exit 1
+          fi
+          # Only check conventional-commits if it ran (on PRs)
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ needs.conventional-commits.result }}" != "success" ]]; then
+            echo "Conventional commits check failed"
             exit 1
           fi
           if [[ "${{ needs.security-scan.result }}" != "success" ]]; then
