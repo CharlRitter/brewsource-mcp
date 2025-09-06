@@ -114,7 +114,8 @@ k9s:
 # Build the Go application binary
 build:
 	@echo "🔨 Building application..."
-	@cd app && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/brewsource-mcp cmd/server/main.go
+	@mkdir -p app/bin
+	@GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o app/bin/brewsource-mcp ./app/cmd/server
 	@echo "✅ Build complete: app/bin/brewsource-mcp"
 
 # Run all unit tests for the application
