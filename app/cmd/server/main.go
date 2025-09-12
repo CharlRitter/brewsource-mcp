@@ -1,3 +1,4 @@
+// Package main starts the Brewsource MCP server.
 package main
 
 import (
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// Initialize database
-	db, err := initDatabase()
+	db, err := InitDatabase()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -60,7 +61,7 @@ func main() {
 	// Initialize Redis (optional)
 	var redisClient *redis.Client
 	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
-		redisClient = initRedis(redisURL)
+		redisClient = InitRedis(redisURL)
 	}
 
 	// Cleanup function for early exits and normal execution
@@ -93,15 +94,21 @@ func main() {
 	// Initialize MCP server
 	mcpServer := mcp.NewServer(toolHandlers, resourceHandlers)
 
+	// Register /version resource handler
+	mcpServer.RegisterResourceHandler("/version", handlers.VersionResourceHandler())
+
+	// Register /health resource handler
+	mcpServer.RegisterResourceHandler("/health", handlers.HealthResourceHandler())
+
 	// Run server based on mode
 	var shouldDefer bool
 	switch *mode {
 	case "websocket":
 		shouldDefer = true
-		runWebSocketServer(mcpServer, *port)
+		RunWebSocketServer(mcpServer, *port)
 	case "stdio":
 		shouldDefer = true
-		runStdioServer(mcpServer)
+		RunStdioServer(mcpServer)
 	default:
 		cleanup()
 		log.Fatalf("Unknown mode: %s. Use 'websocket' or 'stdio'", *mode)
@@ -113,7 +120,7 @@ func main() {
 	}
 }
 
-func initDatabase() (*sqlx.DB, error) {
+func InitDatabase() (*sqlx.DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		return nil, errors.New("DATABASE_URL environment variable is required")
@@ -144,7 +151,7 @@ func initDatabase() (*sqlx.DB, error) {
 	return db, nil
 }
 
-func initRedis(redisURL string) *redis.Client {
+func InitRedis(redisURL string) *redis.Client {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		logrus.Warnf("Failed to parse Redis URL: %v", err)
@@ -166,7 +173,7 @@ func initRedis(redisURL string) *redis.Client {
 	return client
 }
 
-func runWebSocketServer(mcpServer *mcp.Server, port string) {
+func RunWebSocketServer(mcpServer *mcp.Server, port string) {
 	// Create HTTP server
 	mux := http.NewServeMux()
 
@@ -232,7 +239,7 @@ func runWebSocketServer(mcpServer *mcp.Server, port string) {
 	}
 }
 
-func runStdioServer(mcpServer *mcp.Server) {
+func RunStdioServer(mcpServer *mcp.Server) {
 	logrus.Info("Starting stdio server")
 
 	if err := mcpServer.HandleStdio(); err != nil {

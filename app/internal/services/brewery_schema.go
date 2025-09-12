@@ -1,3 +1,4 @@
+// Package services provides business logic and service layer functions for Brewsource MCP, including beer and brewery operations.
 package services
 
 import "time"
@@ -19,6 +20,8 @@ type Brewery struct {
 }
 
 // GetSeedBreweries returns a slice of South African breweries.
+//
+//nolint:funlen // dataset function, length is intentional
 func GetSeedBreweries() []Brewery {
 	return []Brewery{
 		// --- Macro Breweries ---

@@ -1,3 +1,5 @@
+// Package models defines the data models and database schema for Brewsource MCP.
+// Package models defines the data models and database schema for Brewsource MCP.
 package models
 
 import (

@@ -1,3 +1,4 @@
+// Package models_test contains tests for the data models and database schema in Brewsource MCP.
 package models_test
 
 import (
@@ -328,8 +329,24 @@ func TestSeedBeers_HappyPath(t *testing.T) {
 
 		// When
 		beers = []services.SeedBeer{
-			{Name: "Beer 1", BreweryName: "Brewery A", Style: "IPA", ABV: 5.5, IBU: 40, SRM: 6.0, Description: "A test IPA."},
-			{Name: "Beer 2", BreweryName: "Brewery B", Style: "Lager", ABV: 4.2, IBU: 20, SRM: 3.0, Description: "A test Lager."},
+			{
+				Name:        "Beer 1",
+				BreweryName: "Brewery A",
+				Style:       "IPA",
+				ABV:         5.5,
+				IBU:         40,
+				SRM:         6.0,
+				Description: "A test IPA.",
+			},
+			{
+				Name:        "Beer 2",
+				BreweryName: "Brewery B",
+				Style:       "Lager",
+				ABV:         4.2,
+				IBU:         20,
+				SRM:         3.0,
+				Description: "A test Lager.",
+			},
 		}
 		_ = insertBeersForTest(ctx, db, breweryIDs, beers)
 		// Verify all beers were inserted
@@ -465,8 +482,24 @@ func TestGetSeedBeers_DataValidation(t *testing.T) {
 	t.Run("should return valid beer data", func(t *testing.T) {
 		// Use local test data
 		beers := []services.SeedBeer{
-			{Name: "Test Beer 1", BreweryName: "Brewery X", Style: "IPA", ABV: 5.0, IBU: 40, SRM: 6.0, Description: "A test IPA."},
-			{Name: "Test Beer 2", BreweryName: "Brewery Y", Style: "Lager", ABV: 4.2, IBU: 20, SRM: 3.0, Description: "A test Lager."},
+			{
+				Name:        "Test Beer 1",
+				BreweryName: "Brewery X",
+				Style:       "IPA",
+				ABV:         5.0,
+				IBU:         40,
+				SRM:         6.0,
+				Description: "A test IPA.",
+			},
+			{
+				Name:        "Test Beer 2",
+				BreweryName: "Brewery Y",
+				Style:       "Lager",
+				ABV:         4.2,
+				IBU:         20,
+				SRM:         3.0,
+				Description: "A test Lager.",
+			},
 		}
 
 		// Then
@@ -502,8 +535,24 @@ func TestGetSeedBeers_BreweryMapping(t *testing.T) {
 			{Name: "Brewery Y", BreweryType: "micro", City: "Test City", State: "Test State", Country: "Test Country"},
 		}
 		beers := []services.SeedBeer{
-			{Name: "Test Beer 1", BreweryName: "Brewery X", Style: "IPA", ABV: 5.0, IBU: 40, SRM: 6.0, Description: "A test IPA."},
-			{Name: "Test Beer 2", BreweryName: "Brewery Y", Style: "Lager", ABV: 4.2, IBU: 20, SRM: 3.0, Description: "A test Lager."},
+			{
+				Name:        "Test Beer 1",
+				BreweryName: "Brewery X",
+				Style:       "IPA",
+				ABV:         5.0,
+				IBU:         40,
+				SRM:         6.0,
+				Description: "A test IPA.",
+			},
+			{
+				Name:        "Test Beer 2",
+				BreweryName: "Brewery Y",
+				Style:       "Lager",
+				ABV:         4.2,
+				IBU:         20,
+				SRM:         3.0,
+				Description: "A test Lager.",
+			},
 		}
 
 		// Create a map of brewery names
@@ -702,8 +751,24 @@ func TestSeedDatabase_LargeDataSet(t *testing.T) {
 			{Name: "Brewery B", BreweryType: "micro", City: "CityB", State: "StateB", Country: "CountryB"},
 		}
 		beers := []services.SeedBeer{
-			{Name: "Beer 1", BreweryName: "Brewery A", Style: "IPA", ABV: 5.5, IBU: 40, SRM: 6.0, Description: "A test IPA."},
-			{Name: "Beer 2", BreweryName: "Brewery B", Style: "Lager", ABV: 4.2, IBU: 20, SRM: 3.0, Description: "A test Lager."},
+			{
+				Name:        "Beer 1",
+				BreweryName: "Brewery A",
+				Style:       "IPA",
+				ABV:         5.5,
+				IBU:         40,
+				SRM:         6.0,
+				Description: "A test IPA.",
+			},
+			{
+				Name:        "Beer 2",
+				BreweryName: "Brewery B",
+				Style:       "Lager",
+				ABV:         4.2,
+				IBU:         20,
+				SRM:         3.0,
+				Description: "A test Lager.",
+			},
 		}
 		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)
@@ -739,8 +804,24 @@ func TestSeedDatabase_FullIntegration(t *testing.T) {
 			{Name: "Brewery B", BreweryType: "micro", City: "CityB", State: "StateB", Country: "CountryB"},
 		}
 		beers := []services.SeedBeer{
-			{Name: "Beer 1", BreweryName: "Brewery A", Style: "IPA", ABV: 5.5, IBU: 40, SRM: 6.0, Description: "A test IPA."},
-			{Name: "Beer 2", BreweryName: "Brewery B", Style: "Lager", ABV: 4.2, IBU: 20, SRM: 3.0, Description: "A test Lager."},
+			{
+				Name:        "Beer 1",
+				BreweryName: "Brewery A",
+				Style:       "IPA",
+				ABV:         5.5,
+				IBU:         40,
+				SRM:         6.0,
+				Description: "A test IPA.",
+			},
+			{
+				Name:        "Beer 2",
+				BreweryName: "Brewery B",
+				Style:       "Lager",
+				ABV:         4.2,
+				IBU:         20,
+				SRM:         3.0,
+				Description: "A test Lager.",
+			},
 		}
 		err := insertBreweriesForTest(ctx, db, breweries)
 		require.NoError(t, err)

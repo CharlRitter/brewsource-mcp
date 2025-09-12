@@ -1,3 +1,6 @@
+// Package data provides utilities for loading and handling BJCP data for Brewsource MCP.
+
+// Package data_test contains tests for the BJCP data utilities in Brewsource MCP.
 package data_test
 
 import (

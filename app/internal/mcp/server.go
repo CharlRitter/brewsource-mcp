@@ -1,3 +1,4 @@
+// Package mcp implements the Model Context Protocol server logic for Brewsource MCP.
 package mcp
 
 import (
@@ -298,6 +299,12 @@ func (s *Server) handleResourcesList(msg *Message) *Message {
 			URI:         "beers://catalog",
 			Name:        "Beer Catalog",
 			Description: "Commercial beer database",
+			MimeType:    "application/json",
+		},
+		{
+			URI:         "/version",
+			Name:        "Service Version",
+			Description: "Current version of the BrewSource MCP service",
 			MimeType:    "application/json",
 		},
 	}

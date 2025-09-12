@@ -1,3 +1,4 @@
+// Package services provides business logic and service layer functions for Brewsource MCP, including beer and brewery operations.
 package services
 
 import (

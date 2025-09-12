@@ -94,7 +94,7 @@ app/
 ├── cmd/server/          # Application entry point
 ├── internal/            # Private application code
 │   ├── mcp/            # MCP protocol implementation
-│   ├── handlers/       # Tool and resource handlers  
+│   ├── handlers/       # Tool and resource handlers
 │   ├── models/         # Database models and migrations
 │   └── services/       # Business logic services
 ├── pkg/                # Public/reusable packages
@@ -106,8 +106,8 @@ app/
 ## Development Environment
 
 ### Technology Stack
-- **Go 1.23+** - Main language with standard project layout
-- **PostgreSQL** - Primary database for beers/breweries  
+- **Go 1.24+** - Main language with standard project layout
+- **PostgreSQL** - Primary database for beers/breweries
 - **Redis** - Optional caching layer
 - **Kubernetes + Tilt** - Development environment with live reload
 - **Kind** - Local Kubernetes cluster
@@ -167,7 +167,7 @@ return nil, &mcp.Error{
 ### Key Brewing Measurements
 - **IBU** - International Bitterness Units
 - **SRM** - Standard Reference Method (color)
-- **ABV** - Alcohol By Volume percentage  
+- **ABV** - Alcohol By Volume percentage
 - **OG/FG** - Original/Final Gravity
 
 ### Data Sources
@@ -184,7 +184,7 @@ return nil, &mcp.Error{
 4. Add validation and error handling
 5. Write unit tests covering success and error cases
 
-### Database Schema Changes  
+### Database Schema Changes
 1. Update models in `internal/models/`
 2. Add migration logic to `MigrateDatabase()`
 3. Update seed data if needed
@@ -227,11 +227,11 @@ Look up BJCP beer styles by code (e.g., "21A") or name (e.g., "American IPA").
 - Validates style codes against BJCP format
 - Case-insensitive name matching
 
-### `search_beers` 
+### `search_beers`
 Search commercial beer database with filters:
 - `name` - Beer name search
 - `style` - Beer style filter
-- `brewery` - Brewery name filter  
+- `brewery` - Brewery name filter
 - `location` - Geographic filter
 - `limit` - Result limit (max 100, default 20)
 
@@ -247,7 +247,7 @@ Search brewery database with filters:
 ### Common Issues
 - **Database connection failed**: Check `DATABASE_URL` and ensure PostgreSQL is running
 - **Kubernetes cluster issues**: Try `make clean && make up` to recreate
-- **Build failures**: Ensure Go 1.23+ and check `go mod download`
+- **Build failures**: Ensure Go 1.24+ and check `go mod download`
 - **Port conflicts**: Check if ports 8080, 5432, 6379 are available
 
 ### Useful Commands
@@ -261,14 +261,14 @@ kubectl logs -n brewsource-dev deployment/brewsource-mcp
 # Database connection test
 psql "${DATABASE_URL}" -c "SELECT 1;"
 
-# Redis connection test  
+# Redis connection test
 redis-cli -h localhost -p 6379 ping
 ```
 
 ### Development Aliases (from .envrc)
 ```bash
 k      # kubectl -n brewsource-dev
-kg     # kubectl get -n brewsource-dev  
+kg     # kubectl get -n brewsource-dev
 kl     # kubectl logs -n brewsource-dev
 kd     # kubectl describe -n brewsource-dev
 up     # tilt up

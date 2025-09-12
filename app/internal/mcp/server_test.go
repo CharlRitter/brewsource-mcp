@@ -1,3 +1,4 @@
+// Package mcp_test contains tests for the Model Context Protocol server logic in Brewsource MCP.
 package mcp_test
 
 import (

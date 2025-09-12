@@ -1,4 +1,5 @@
-package main
+// Package main_test contains tests for the server in Brewsource MCP.
+package main_test
 
 import (
 	"context"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	main "github.com/CharlRitter/brewsource-mcp/app/cmd/server"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
@@ -583,7 +585,7 @@ func TestInitDatabase(t *testing.T) {
 	}()
 
 	os.Unsetenv("DATABASE_URL")
-	_, err := initDatabase()
+	_, err := main.InitDatabase()
 	if err == nil {
 		t.Error("Expected error when DATABASE_URL is not set")
 	}
@@ -593,7 +595,7 @@ func TestInitDatabase(t *testing.T) {
 
 	// Test invalid database URL
 	t.Setenv("DATABASE_URL", "invalid://url")
-	_, err = initDatabase()
+	_, err = main.InitDatabase()
 	if err == nil {
 		t.Error("Expected error for invalid database URL")
 	}
@@ -602,13 +604,13 @@ func TestInitDatabase(t *testing.T) {
 // Test initRedis function.
 func TestInitRedis(t *testing.T) {
 	// Test with invalid Redis URL
-	client := initRedis("invalid://url")
+	client := main.InitRedis("invalid://url")
 	if client != nil {
 		t.Error("Expected nil client for invalid Redis URL")
 	}
 
 	// Test with valid Redis URL (will fail to connect, but URL parsing should work)
-	client = initRedis("redis://localhost:6379")
+	client = main.InitRedis("redis://localhost:6379")
 	// The function returns nil on connection failure, which is expected in test environment
 	// This tests the URL parsing and connection attempt logic
 	_ = client // Suppress unused variable warning
@@ -639,7 +641,7 @@ func TestRunStdioServer(t *testing.T) {
 			}
 		}()
 		// This will exit quickly due to EOF on stdin, which is expected in tests
-		runStdioServer(server)
+		main.RunStdioServer(server)
 	}()
 
 	// Give it a moment to start and encounter EOF
@@ -673,7 +675,7 @@ func TestRunWebSocketServer(t *testing.T) {
 		}()
 
 		// Use a test port
-		runWebSocketServer(server, "0") // Port 0 will assign a random available port
+		main.RunWebSocketServer(server, "0") // Port 0 will assign a random available port
 	}()
 
 	// Give it a moment to start

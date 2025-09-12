@@ -1,3 +1,4 @@
+// Package services provides business logic and service layer functions for Brewsource MCP, including beer and brewery operations.
 package services
 
 type SeedBeer struct {
@@ -13,7 +14,7 @@ type SeedBeer struct {
 // GetSeedBeers returns a slice of sample South African beers.
 // Note: The numeric values below are actual beer specifications (ABV, IBU, SRM).
 //
-//nolint:mnd // These are real brewing specifications, not magic numbers
+//nolint:mnd,funlen // These are real brewing specifications, not magic numbers; dataset function, length is intentional
 func GetSeedBeers() []SeedBeer {
 	return []SeedBeer{
 		// --- SAB (Macro) ---
