@@ -311,7 +311,7 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 - **WebSocket & Stdio Support** - Multiple connection modes for different MCP clients
 - **PostgreSQL Database** - Persistent storage with proper indexing
 - **Redis Caching** - Optional caching layer for improved performance
-- **Seed Data** - Pre-populated with 5 BJCP styles, 8 breweries, and 8 commercial beers
+- **Seed Data** - Pre-populated with BJCP styles, breweries, and commercial beers
 - **Comprehensive Testing** - Unit tests for brewing calculations and BJCP utilities
 
 ### ✅ Developer Experience
@@ -399,6 +399,16 @@ make build
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
+
+### Expanding or Correcting Datasets
+
+The core datasets for beers and breweries are defined as Go source files:
+
+- [Beers dataset (`SeedBeer`)](app/internal/services/beer_schema.go)
+- [Breweries dataset (`Brewery`)](app/internal/services/brewery_schema.go)
+- [BJCP styles (beer, mead, cider, special ingredients) JSON](app/data/)
+
+To expand the beer or brewery data (add new entries or fix errors), edit the relevant Go file and open a Pull Request with your changes. For BJCP style data, update the appropriate JSON file in `app/data/` and submit a PR. Please ensure your changes are well-formatted and include a clear description of the update.
 
 ### Code Standards
 
@@ -495,6 +505,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the MCP specification
 - The homebrewing community for inspiration and knowledge sharing
 
+
+## Current ToDos
+- Add more seed data (styles, beers, breweries)
+- Move all seed data to `app/data/` JSON files
+- Load seed data into cache on startup
 ---
 
 **Happy Brewing!** 🍺

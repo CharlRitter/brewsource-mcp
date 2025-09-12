@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )
@@ -45,7 +46,7 @@ func seedBreweries(ctx context.Context, db *sqlx.DB) error {
 		return nil
 	}
 	logrus.Info("Seeding breweries...")
-	breweries := GetSeedBreweries()
+	breweries := services.GetSeedBreweries()
 	if insertErr := insertBreweries(ctx, db, breweries); insertErr != nil {
 		return insertErr
 	}
@@ -53,100 +54,7 @@ func seedBreweries(ctx context.Context, db *sqlx.DB) error {
 	return nil
 }
 
-func GetSeedBreweries() []Brewery {
-	return []Brewery{
-		{
-			Name:        "Devil's Peak Brewing Company",
-			BreweryType: "micro",
-			Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
-			City:        "Woodstock",
-			State:       "Western Cape",
-			PostalCode:  "7925",
-			Country:     "South Africa",
-			Phone:       "+27 21 200 5818",
-			WebsiteURL:  "https://www.devilspeak.beer",
-		},
-		{
-			Name:        "Jack Black's Brewing Company",
-			BreweryType: "micro",
-			Street:      "10 Brigid Road",
-			City:        "Diep River",
-			State:       "Western Cape",
-			PostalCode:  "7800",
-			Country:     "South Africa",
-			Phone:       "+27 21 447 4151",
-			WebsiteURL:  "https://www.jackblackbeer.com",
-		},
-		{
-			Name:        "Drifter Brewing Company",
-			BreweryType: "micro",
-			Street:      "156 Victoria Road",
-			City:        "Woodstock",
-			State:       "Western Cape",
-			PostalCode:  "7925",
-			Country:     "South Africa",
-			Phone:       "+27 21 447 0835",
-			WebsiteURL:  "https://www.drifterbrewing.co.za",
-		},
-		{
-			Name:        "Stellenbosch Brewing Company",
-			BreweryType: "micro",
-			Street:      "Klein Joostenberg, R304",
-			City:        "Stellenbosch",
-			State:       "Western Cape",
-			PostalCode:  "7600",
-			Country:     "South Africa",
-			Phone:       "+27 21 884 4014",
-			WebsiteURL:  "https://www.stellenboschbrewing.co.za",
-		},
-		{
-			Name:        "Woodstock Brewery",
-			BreweryType: "micro",
-			Street:      "252 Albert Road",
-			City:        "Woodstock",
-			State:       "Western Cape",
-			PostalCode:  "7925",
-			Country:     "South Africa",
-			Phone:       "+27 21 447 0953",
-			WebsiteURL:  "https://www.woodstockbrewery.co.za",
-		},
-		{
-			Name:        "Darling Brew",
-			BreweryType: "micro",
-			Street:      "48 Caledon Street",
-			City:        "Darling",
-			State:       "Western Cape",
-			PostalCode:  "7345",
-			Country:     "South Africa",
-			Phone:       "+27 21 286 1099",
-			WebsiteURL:  "https://www.darlingbrew.co.za",
-		},
-		{
-			Name:        "Cape Brewing Company (CBC)",
-			BreweryType: "micro",
-			Street:      "R44, Klapmuts",
-			City:        "Paarl",
-			State:       "Western Cape",
-			PostalCode:  "7625",
-			Country:     "South Africa",
-			Phone:       "+27 21 863 2270",
-			WebsiteURL:  "https://www.capebrewing.co.za",
-		},
-		{
-			Name:        "Signal Gun Wines & Brewery",
-			BreweryType: "micro",
-			Street:      "Meerendal Wine Estate, Vissershok Road",
-			City:        "Durbanville",
-			State:       "Western Cape",
-			PostalCode:  "7550",
-			Country:     "South Africa",
-			Phone:       "+27 21 558 6972",
-			WebsiteURL:  "https://www.signalgun.com",
-		},
-	}
-}
-
-func insertBreweries(ctx context.Context, db *sqlx.DB, breweries []Brewery) error {
+func insertBreweries(ctx context.Context, db *sqlx.DB, breweries []services.Brewery) error {
 	for _, brewery := range breweries {
 		query := `
 			INSERT INTO breweries (
@@ -181,7 +89,7 @@ func seedBeers(ctx context.Context, db *sqlx.DB) error {
 	if breweryErr != nil {
 		return breweryErr
 	}
-	beers := GetSeedBeers()
+	beers := services.GetSeedBeers()
 	if insertErr := insertBeers(ctx, db, breweries, beers); insertErr != nil {
 		return insertErr
 	}
@@ -226,97 +134,7 @@ func SeedBeers(ctx context.Context, db *sqlx.DB) error {
 	return seedBeers(ctx, db)
 }
 
-type SeedBeer struct {
-	Name        string
-	BreweryName string
-	Style       string
-	ABV         float64
-	IBU         int
-	SRM         float64
-	Description string
-}
-
-func GetSeedBeers() []SeedBeer {
-	// Note: The numeric values below are actual beer specifications (ABV, IBU, SRM)
-	// and are not arbitrary magic numbers - they represent real brewing data.
-	//nolint:mnd // These are real brewing specifications, not magic numbers
-	return []SeedBeer{
-		{
-			Name:        "King's Blockhouse IPA",
-			BreweryName: "Devil's Peak Brewing Company",
-			Style:       "American IPA",
-			ABV:         6.0,
-			IBU:         52,
-			SRM:         10.0,
-			Description: "A bold, hop-forward IPA with citrus and pine notes, regarded as one of South Africa's best IPAs.",
-		},
-		{
-			Name:        "Four Lager",
-			BreweryName: "Jack Black's Brewing Company",
-			Style:       "Lager",
-			ABV:         4.0,
-			IBU:         18,
-			SRM:         4.0,
-			Description: "A crisp, easy-drinking lager with a light malt backbone and subtle hop aroma.",
-		},
-		{
-			Name:        "The Stranded Coconut",
-			BreweryName: "Drifter Brewing Company",
-			Style:       "Coconut Ale",
-			ABV:         4.5,
-			IBU:         20,
-			SRM:         6.0,
-			Description: "A unique ale brewed with real coconut, offering a tropical aroma and smooth finish.",
-		},
-		{
-			Name:        "Hoenderhok Bock",
-			BreweryName: "Stellenbosch Brewing Company",
-			Style:       "Bock",
-			ABV:         6.5,
-			IBU:         24,
-			SRM:         20.0,
-			Description: "A malty, rich bock with caramel and toffee notes, inspired by German brewing traditions.",
-		},
-		{
-			Name:        "Rhythm Stick English Pale Ale",
-			BreweryName: "Woodstock Brewery",
-			Style:       "English Pale Ale",
-			ABV:         4.5,
-			IBU:         30,
-			SRM:         8.0,
-			Description: "A balanced pale ale with biscuit malt character and earthy English hops.",
-		},
-		{
-			Name:        "Bone Crusher Witbier",
-			BreweryName: "Darling Brew",
-			Style:       "Witbier",
-			ABV:         6.0,
-			IBU:         15,
-			SRM:         4.0,
-			Description: "A refreshing Belgian-style witbier brewed with coriander and orange peel.",
-		},
-		{
-			Name:        "Amber Weiss",
-			BreweryName: "Cape Brewing Company (CBC)",
-			Style:       "Weissbier",
-			ABV:         5.0,
-			IBU:         14,
-			SRM:         7.0,
-			Description: "A classic German-style wheat beer with banana and clove aromas and a smooth mouthfeel.",
-		},
-		{
-			Name:        "Gun Powder IPA",
-			BreweryName: "Signal Gun Wines & Brewery",
-			Style:       "IPA",
-			ABV:         5.5,
-			IBU:         45,
-			SRM:         9.0,
-			Description: "A hop-forward IPA with citrus and tropical fruit notes, brewed on a historic Durbanville farm.",
-		},
-	}
-}
-
-func insertBeers(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []SeedBeer) error {
+func insertBeers(ctx context.Context, db *sqlx.DB, breweries map[string]int, beers []services.SeedBeer) error {
 	for _, beer := range beers {
 		breweryID, exists := breweries[beer.BreweryName]
 		if !exists {
