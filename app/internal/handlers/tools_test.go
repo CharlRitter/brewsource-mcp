@@ -1,3 +1,4 @@
+// Package handlers_test contains tests for the HTTP handlers in Brewsource MCP.
 package handlers_test
 
 import (

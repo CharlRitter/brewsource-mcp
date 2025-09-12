@@ -1,3 +1,4 @@
+// Package handlers provides HTTP handlers for the Brewsource MCP server, including health checks and resource endpoints.
 package handlers
 
 import (

@@ -1,0 +1,326 @@
+// Package services provides business logic and service layer functions for Brewsource MCP, including beer and brewery operations.
+package services
+
+import "time"
+
+// Brewery represents a brewery.
+type Brewery struct {
+	ID          int       `json:"id"           db:"id"`
+	Name        string    `json:"name"         db:"name"`
+	BreweryType string    `json:"brewery_type" db:"brewery_type"`
+	Street      string    `json:"street"       db:"street"`
+	City        string    `json:"city"         db:"city"`
+	State       string    `json:"state"        db:"state"`
+	PostalCode  string    `json:"postal_code"  db:"postal_code"`
+	Country     string    `json:"country"      db:"country"`
+	Phone       string    `json:"phone"        db:"phone"`
+	WebsiteURL  string    `json:"website_url"  db:"website_url"`
+	CreatedAt   time.Time `json:"created_at"   db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"   db:"updated_at"`
+}
+
+// GetSeedBreweries returns a slice of South African breweries.
+//
+//nolint:funlen // dataset function, length is intentional
+func GetSeedBreweries() []Brewery {
+	return []Brewery{
+		// --- Macro Breweries ---
+		{
+			Name:        "SAB - Newlands Brewery",
+			BreweryType: "macro",
+			Street:      "3 Main Rd, Newlands",
+			City:        "Cape Town",
+			State:       "Western Cape",
+			PostalCode:  "7700",
+			Country:     "South Africa",
+			Phone:       "+27 21 658 7440",
+			WebsiteURL:  "https://www.sab.co.za",
+		},
+		{
+			Name:        "SAB - Alrode Brewery",
+			BreweryType: "macro",
+			Street:      "166 Arnold St, Alrode",
+			City:        "Alberton",
+			State:       "Gauteng",
+			PostalCode:  "1451",
+			Country:     "South Africa",
+			Phone:       "+27 11 860 3111",
+			WebsiteURL:  "https://www.sab.co.za",
+		},
+		{
+			Name:        "SAB - Prospecton Brewery",
+			BreweryType: "macro",
+			Street:      "1 Prospecton Rd, Prospecton",
+			City:        "Durban",
+			State:       "KwaZulu-Natal",
+			PostalCode:  "4133",
+			Country:     "South Africa",
+			Phone:       "+27 31 910 1111",
+			WebsiteURL:  "https://www.sab.co.za",
+		},
+
+		// --- Western Cape (Craft) ---
+		{
+			Name:        "Afro Caribbean Brewing Co. (ACBC)",
+			BreweryType: "brewpub",
+			Street:      "112 Buitengracht St, Cape Town City Centre",
+			City:        "Cape Town",
+			State:       "Western Cape",
+			PostalCode:  "8001",
+			Country:     "South Africa",
+			Phone:       "+27 61 546 5345",
+			WebsiteURL:  "https://www.afrocaribbean.co.za",
+		},
+		{
+			Name:        "Aegir Project Brewery",
+			BreweryType: "brewpub",
+			Street:      "65 Beach Road",
+			City:        "Noordhoek",
+			State:       "Western Cape",
+			PostalCode:  "7979",
+			Country:     "South Africa",
+			Phone:       "+27 66 587 1361",
+			WebsiteURL:  "https://www.aegirproject.co.za",
+		},
+		{
+			Name:        "Cape Brewing Company (CBC)",
+			BreweryType: "micro",
+			Street:      "Spice Route Destination, Suid-Agter-Paarl Road",
+			City:        "Paarl",
+			State:       "Western Cape",
+			PostalCode:  "7624",
+			Country:     "South Africa",
+			Phone:       "+27 21 863 2270",
+			WebsiteURL:  "https://www.capebrewing.co.za",
+		},
+		{
+			Name:        "Darling Brew",
+			BreweryType: "micro",
+			Street:      "48 Caledon Street",
+			City:        "Darling",
+			State:       "Western Cape",
+			PostalCode:  "7345",
+			Country:     "South Africa",
+			Phone:       "+27 21 286 1099",
+			WebsiteURL:  "https://www.darlingbrew.co.za",
+		},
+		{
+			Name:        "Devil's Peak Brewing Company",
+			BreweryType: "micro",
+			Street:      "1st Floor, The Old Warehouse, 6 Beach Road",
+			City:        "Woodstock",
+			State:       "Western Cape",
+			PostalCode:  "7925",
+			Country:     "South Africa",
+			Phone:       "+27 21 200 5818",
+			WebsiteURL:  "https://www.devilspeak.beer",
+		},
+		{
+			Name:        "Drifter Brewing Company",
+			BreweryType: "micro",
+			Street:      "156 Victoria Road",
+			City:        "Woodstock",
+			State:       "Western Cape",
+			PostalCode:  "7925",
+			Country:     "South Africa",
+			Phone:       "+27 21 447 0835",
+			WebsiteURL:  "https://www.drifterbrewing.co.za",
+		},
+		{
+			Name:        "Franschhoek Beer Co",
+			BreweryType: "micro",
+			Street:      "R45",
+			City:        "Franschhoek",
+			State:       "Western Cape",
+			PostalCode:  "7690",
+			Country:     "South Africa",
+			Phone:       "+27 21 876 2137",
+			WebsiteURL:  "https://franschhoekbeerco.co.za",
+		},
+		{
+			Name:        "Hey Joe Brewing Company",
+			BreweryType: "brewpub",
+			Street:      "R301",
+			City:        "Franschhoek",
+			State:       "Western Cape",
+			PostalCode:  "7690",
+			Country:     "South Africa",
+			Phone:       "+27 63 343 1403",
+			WebsiteURL:  "https://www.heyjoebrewery.com",
+		},
+		{
+			Name:        "Jack Black's Brewing Company",
+			BreweryType: "micro",
+			Street:      "10 Brigid Road",
+			City:        "Diep River",
+			State:       "Western Cape",
+			PostalCode:  "7800",
+			Country:     "South Africa",
+			Phone:       "+27 21 447 4151",
+			WebsiteURL:  "https://www.jackblackbeer.com",
+		},
+		{
+			Name:        "Saggy Stone Brewing Co.",
+			BreweryType: "micro",
+			Street:      "Amandalia Farm, Agtervink Rivier",
+			City:        "Robertson",
+			State:       "Western Cape",
+			PostalCode:  "6705",
+			Country:     "South Africa",
+			Phone:       "+27 82 562 8215",
+			WebsiteURL:  "https://www.saggystone.co.za",
+		},
+		{
+			Name:        "Signal Gun Wines & Brewery",
+			BreweryType: "micro",
+			Street:      "Hooggelegen Farm, Vissershok Road",
+			City:        "Durbanville",
+			State:       "Western Cape",
+			PostalCode:  "7550",
+			Country:     "South Africa",
+			Phone:       "+27 21 976 7343",
+			WebsiteURL:  "https://www.signalgun.com",
+		},
+		{
+			Name:        "Soul Barrel Brewing Co.",
+			BreweryType: "micro",
+			Street:      "R301, Simondium",
+			City:        "Paarl",
+			State:       "Western Cape",
+			PostalCode:  "7670",
+			Country:     "South Africa",
+			Phone:       "+27 82 899 4334",
+			WebsiteURL:  "https://www.soulbarrel.co.za",
+		},
+		{
+			Name:        "Stellenbosch Brewing Company",
+			BreweryType: "micro",
+			Street:      "Klein Joostenberg, R304",
+			City:        "Stellenbosch",
+			State:       "Western Cape",
+			PostalCode:  "7600",
+			Country:     "South Africa",
+			Phone:       "+27 21 884 4014",
+			WebsiteURL:  "https://www.stellenboschbrewing.co.za",
+		},
+		{
+			Name:        "Woodstock Brewery",
+			BreweryType: "micro",
+			Street:      "252 Albert Road",
+			City:        "Woodstock",
+			State:       "Western Cape",
+			PostalCode:  "7925",
+			Country:     "South Africa",
+			Phone:       "+27 21 447 0953",
+			WebsiteURL:  "https://www.woodstockbrewery.co.za",
+		},
+
+		// --- Gauteng (Craft) ---
+		{
+			Name:        "Black Horse Brewery & Distillery",
+			BreweryType: "brewpub",
+			Street:      "32 R98, Seekoeihoek",
+			City:        "Magaliesburg",
+			State:       "Gauteng",
+			PostalCode:  "1791",
+			Country:     "South Africa",
+			Phone:       "+27 82 453 5295",
+			WebsiteURL:  "https://www.blackhorse.co.za",
+		},
+		{
+			Name:        "Capital Craft Beer Academy",
+			BreweryType: "brewpub",
+			Street:      "Greenlyn Village Centre, Cnr Thomas Edison & 12th Street East",
+			City:        "Pretoria",
+			State:       "Gauteng",
+			PostalCode:  "0081",
+			Country:     "South Africa",
+			Phone:       "+27 12 424 8601",
+			WebsiteURL:  "https://www.capitalcraft.co.za",
+		},
+		{
+			Name:        "Gilroy's Brewery",
+			BreweryType: "brewpub",
+			Street:      "Ngwenya Glass Village, R114",
+			City:        "Muldersdrift",
+			State:       "Gauteng",
+			PostalCode:  "1747",
+			Country:     "South Africa",
+			Phone:       "+27 11 796 3020",
+			WebsiteURL:  "https://www.gilroybeers.co.za",
+		},
+		{
+			Name:        "Mad Giant Brewery",
+			BreweryType: "micro",
+			Street:      "1 Fox Street, Ferreiras Dorp",
+			City:        "Johannesburg",
+			State:       "Gauteng",
+			PostalCode:  "2048",
+			Country:     "South Africa",
+			Phone:       "+27 10 020 9000",
+			WebsiteURL:  "https://www.madgiant.co.za",
+		},
+
+		// --- KwaZulu-Natal (Craft) ---
+		{
+			Name:        "1000 Hills Brewing Company",
+			BreweryType: "brewpub",
+			Street:      "16 Kassier Road",
+			City:        "Assagay",
+			State:       "KwaZulu-Natal",
+			PostalCode:  "3624",
+			Country:     "South Africa",
+			Phone:       "+27 31 777 1566",
+			WebsiteURL:  "https://www.1000hillsbrewingcompany.co.za",
+		},
+		{
+			Name:        "That Brewing Company",
+			BreweryType: "micro",
+			Street:      "48 Station Drive, Morningside",
+			City:        "Durban",
+			State:       "KwaZulu-Natal",
+			PostalCode:  "4001",
+			Country:     "South Africa",
+			Phone:       "+27 31 171 0880",
+			WebsiteURL:  "https://www.thatbrewingco.co.za",
+		},
+
+		// --- Eastern Cape (Craft) ---
+		{
+			Name:        "Richmond Hill Brewing Co",
+			BreweryType: "micro",
+			Street:      "2 Alabaster Street, Baakens Valley",
+			City:        "Gqeberha",
+			State:       "Eastern Cape",
+			PostalCode:  "6001",
+			Country:     "South Africa",
+			Phone:       "+27 61 507 1948",
+			WebsiteURL:  "https://www.rhbc.co.za",
+		},
+		// --- Free State (Craft) ---
+		{
+			Name:        "Clarens Brewery",
+			BreweryType: "brewpub",
+			Street:      "36 Market Street",
+			City:        "Clarens",
+			State:       "Free State",
+			PostalCode:  "9707",
+			Country:     "South Africa",
+			Phone:       "+27 58 256 1193",
+			WebsiteURL:  "https://www.clarensbrewery.co.za",
+		},
+
+		// --- Mpumalanga (Craft) ---
+		{
+			Name:        "Anvil Ale House",
+			BreweryType: "brewpub",
+			Street:      "502 Naledi Drive",
+			City:        "Dullstroom",
+			State:       "Mpumalanga",
+			PostalCode:  "1110",
+			Country:     "South Africa",
+			Phone:       "+27 13 254 0023",
+			WebsiteURL:  "https://www.anvilbrewery.com",
+		},
+	}
+}

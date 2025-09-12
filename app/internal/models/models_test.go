@@ -1,3 +1,4 @@
+// Package models_test contains tests for the data models and database schema in Brewsource MCP.
 package models_test
 
 import (

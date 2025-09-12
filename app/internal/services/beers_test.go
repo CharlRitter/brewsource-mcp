@@ -1,3 +1,4 @@
+// Package services_test contains tests for the business logic and service layer functions in Brewsource MCP.
 package services_test
 
 import (

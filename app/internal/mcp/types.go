@@ -1,3 +1,4 @@
+// Package mcp implements the Model Context Protocol server logic for Brewsource MCP.
 package mcp
 
 import (
