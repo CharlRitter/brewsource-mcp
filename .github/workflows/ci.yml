@@ -228,6 +228,11 @@ jobs:
           name: brewsource-mcp-binary
           path: ./release-artifacts/
 
+      - name: Move binary to app/bin
+        run: |
+          mkdir -p app/bin
+          cp ./release-artifacts/brewsource-mcp app/bin/brewsource-mcp
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -290,6 +295,11 @@ jobs:
         with:
           name: brewsource-mcp-binary
           path: ./release-artifacts/
+
+      - name: Move binary to app/bin
+        run: |
+          mkdir -p app/bin
+          cp ./release-artifacts/brewsource-mcp app/bin/brewsource-mcp
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
