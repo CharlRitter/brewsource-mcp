@@ -201,43 +201,10 @@ jobs:
           name: brewsource-mcp-binary
           path: app/bin/brewsource-mcp
 
-  docker:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: brewsource-mcp-binary
-          path: app/bin/
-
-      - name: Make binary executable
-        run: chmod +x app/bin/brewsource-mcp
-
-      - name: Set up Docker Build
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: brewsource-mcp:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   create-pr-rfv-release:
     name: Create PR RFV Release
     runs-on: ubuntu-latest
-    needs: [docker]
+    needs: [build]
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
       - name: Checkout code
@@ -250,14 +217,6 @@ jobs:
         run: |
           VERSION=$(cat VERSION)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create tag for PR (rfv)
-        run: |
-          TAG="v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}"
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag $TAG
-          git push origin $TAG
 
       - name: Download build artifact
         uses: actions/download-artifact@v5
@@ -279,16 +238,24 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
+            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
             ghcr.io/${{ github.repository }}:rfv-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Create tag for PR (rfv)
+        run: |
+          TAG="v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag $TAG
+          git push origin $TAG
+
       - name: Create GitHub pre-release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
-          name: "Release v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}"
+          tag_name: v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
+          name: "Release v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}"
           prerelease: true
           generate_release_notes: true
           files: ./release-artifacts/brewsource-mcp
@@ -298,7 +265,7 @@ jobs:
   create-main-release:
     name: Create Main Release
     runs-on: ubuntu-latest
-    needs: [docker]
+    needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -311,14 +278,6 @@ jobs:
         run: |
           VERSION=$(cat VERSION)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create tag for main
-        run: |
-          TAG="v${{ steps.get_version.outputs.version }}"
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag $TAG
-          git push origin $TAG
 
       - name: Download build artifact
         uses: actions/download-artifact@v5
@@ -344,6 +303,14 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Create tag for main
+        run: |
+          TAG="v${{ steps.get_version.outputs.version }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag $TAG
+          git push origin $TAG
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
