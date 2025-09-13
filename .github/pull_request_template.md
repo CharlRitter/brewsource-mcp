@@ -1,9 +1,7 @@
-# Pull Request
-
-## Description
+# Description
 <!-- Provide a brief description of the changes in this PR -->
 
-## Type of Change
+# Type of Change
 <!-- Check all that apply -->
 - [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
 - [ ] ✨ New feature (non-breaking change which adds functionality)
@@ -15,7 +13,7 @@
 - [ ] ♻️ Code refactoring (no functional changes)
 - [ ] ⚡ Performance improvements
 
-## Checklist
+# Checklist
 <!-- Check all that apply -->
 - [ ] Code follows the project's style guidelines
 - [ ] Self-review of code completed
@@ -27,10 +25,10 @@
 - [ ] Changes tested locally
 - [ ] Ready for review
 
-## Screenshots (if applicable)
+# Screenshots (if applicable)
 <!-- Add screenshots to help explain your changes -->
 
-## Additional Notes
+# Additional Notes
 <!-- Any additional information that reviewers should know -->
 
 ---

@@ -258,16 +258,6 @@ jobs:
           git tag $TAG
           git push origin $TAG
 
-      - name: Create GitHub pre-release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
-          name: "Release v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}"
-          prerelease: true
-          generate_release_notes: true
-          files: ./release-artifacts/brewsource-mcp
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-main-release:
     name: Create Main Release
