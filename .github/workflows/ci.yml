@@ -240,8 +240,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
             ghcr.io/${{ github.repository }}:rfv-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Create tag for PR (rfv)
         run: |
@@ -301,8 +299,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}
             ghcr.io/${{ github.repository }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # cache-from and cache-to removed due to unsupported driver on GitHub Actions
 
       - name: Create tag for main
         run: |
