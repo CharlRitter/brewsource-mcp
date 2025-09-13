@@ -218,6 +218,10 @@ jobs:
           VERSION=$(cat VERSION)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Set lowercase repository name
+        id: repo_lower
+        run: echo "repo_lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
       - name: Download build artifact
         uses: actions/download-artifact@v5
         with:
@@ -238,8 +242,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
-            ghcr.io/${{ github.repository }}:rfv-latest
+            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
+            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:rfv-latest
 
       - name: Create tag for PR (rfv)
         run: |
@@ -277,6 +281,10 @@ jobs:
           VERSION=$(cat VERSION)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Set lowercase repository name
+        id: repo_lower
+        run: echo "repo_lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
       - name: Download build artifact
         uses: actions/download-artifact@v5
         with:
@@ -297,8 +305,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}
+            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:latest
           # cache-from and cache-to removed due to unsupported driver on GitHub Actions
 
       - name: Create tag for main
