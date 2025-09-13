@@ -20,8 +20,8 @@ module.exports = {
       ]
     ],
 
-    // Subject case - sentence case (first letter capitalized)
-    'subject-case': [2, 'always', 'sentence-case'],
+    // Subject case - lower case
+    'subject-case': [2, 'always', 'lower-case'],
 
     // Subject length limits
     'subject-max-length': [2, 'always', 72],
@@ -29,9 +29,6 @@ module.exports = {
 
     // Body line length
     'body-max-line-length': [2, 'always', 100],
-
-    // Header length
-    'header-max-length': [2, 'always', 72],
 
     // Scope rules
     'scope-case': [2, 'always', 'lower-case'],
@@ -45,14 +42,11 @@ module.exports = {
     'type-case': [2, 'always', 'lower-case'],
 
     // Footer rules for breaking changes and issue references
-    'footer-leading-blank': [1, 'always'],
+    'footer-leading-blank': [2, 'always'],
     'footer-max-line-length': [2, 'always', 100],
 
     // Body rules
     'body-leading-blank': [1, 'always'],
-
-    // Signed-off-by line
-    'signed-off-by': [0, 'always', 'Signed-off-by:']
   },
 
   // Custom validation functions
@@ -84,16 +78,6 @@ module.exports = {
     }
   ],
 
-  // Ignore certain patterns
-  ignores: [
-    (message) => message.includes('WIP:'),
-    (message) => message.includes('Merge'),
-    (message) => message.includes('Revert')
-  ],
-
   // Default severity level
   defaultIgnores: true,
-
-  // Help URL for users
-  helpUrl: 'https://github.com/conventional-changelog/commitlint/#what-is-commitlint'
 };
