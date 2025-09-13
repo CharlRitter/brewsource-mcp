@@ -7,6 +7,49 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  #================================================= Validation jobs =================================================#
+
+  conventional-commits:
+    name: Validate Conventional Commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install conventional commit checker
+        run: npm install -g @commitlint/cli @commitlint/config-conventional
+
+      - name: Validate PR title
+        run: |
+          echo "${{ github.event.pull_request.title }}" | npx commitlint
+
+      - name: Validate commit messages
+        run: |
+          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+  check-version-bump:
+    name: Check VERSION bump on PR to main
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check if VERSION file changed
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^VERSION$'; then
+            echo "VERSION file was changed."
+          else
+            echo "ERROR: VERSION file must be bumped for PRs to main."
+            exit 1
+          fi
+
   lint:
     name: Code Linting
     runs-on: ubuntu-latest
@@ -101,10 +144,27 @@ jobs:
             exit 1
           fi
 
+  security-scan:
+    name: Security Scan & Dependency Vulnerability Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+
+      - name: Security Scan
+        run: make security
+
+  #=============================================== Build & Release jobs ===============================================#
+
   build:
     name: Build Application
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [check-version-bump, lint, test, conventional-commits, security-scan]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -142,23 +202,9 @@ jobs:
           path: app/bin/brewsource-mcp
 
   docker:
-    name: Docker Build and Test
+    name: Docker Build
     runs-on: ubuntu-latest
-    needs: [lint, test, build]
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: testpassword
-          POSTGRES_USER: testuser
-          POSTGRES_DB: brewsource_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+    needs: [build]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -174,6 +220,8 @@ jobs:
 
       - name: Set up Docker Build
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
       - name: Build Docker image
         uses: docker/build-push-action@v6
@@ -186,144 +234,123 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Test Docker image
-        run: |
-          # Wait for PostgreSQL to be ready
-          until pg_isready -h localhost -p 5432 -U testuser; do
-            echo "Waiting for PostgreSQL..."
-            sleep 2
-          done
-
-          # Start container in background
-          docker run -d --name brewsource-test \
-            -p 8080:8080 \
-            --network host \
-            -e DATABASE_URL=postgresql://testuser:testpassword@localhost:5432/brewsource_test?sslmode=disable \
-            -e LOG_LEVEL=info \
-            brewsource-mcp:test
-
-          # Wait for container to start
-          sleep 10
-
-          # Test health endpoint
-          max_attempts=30
-          attempt=0
-          while [ $attempt -lt $max_attempts ]; do
-            if curl -f http://localhost:8080/health; then
-              echo "Health check passed!"
-              break
-            fi
-            echo "Health check failed, attempt $((attempt + 1))/$max_attempts"
-            sleep 2
-            attempt=$((attempt + 1))
-          done
-
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Health check failed after $max_attempts attempts"
-            docker logs brewsource-test
-            exit 1
-          fi
-
-          # Test server info endpoint
-          curl -f http://localhost:8080/
-
-          # Stop container
-          docker stop brewsource-test
-          docker rm brewsource-test
-
-  conventional-commits:
-    name: Validate Conventional Commits
+  create-pr-rfv-release:
+    name: Create PR RFV Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    needs: [docker]
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Install conventional commit checker
-        run: npm install -g @commitlint/cli @commitlint/config-conventional
-
-      - name: Create commitlint config
+      - name: Get version
+        id: get_version
         run: |
-          cat > commitlint.config.js << 'EOF'
-          module.exports = {
-            extends: ['@commitlint/config-conventional'],
-            rules: {
-              'type-enum': [2, 'always', [
-                'feat',     // New feature
-                'fix',      // Bug fix
-                'docs',     // Documentation changes
-                'style',    // Code style changes (formatting, etc.)
-                'refactor', // Code refactoring
-                'test',     // Adding or updating tests
-                'chore',    // Maintenance tasks
-                'perf',     // Performance improvements
-                'ci',       // CI/CD changes
-                'build',    // Build system changes
-                'revert'    // Revert previous commit
-              ]],
-              'subject-case': [2, 'always', 'sentence-case'],
-              'subject-max-length': [2, 'always', 72],
-              'body-max-line-length': [2, 'always', 100]
-            }
-          };
-          EOF
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Validate PR title
+      - name: Create tag for PR (rfv)
         run: |
-          echo "${{ github.event.pull_request.title }}" | npx commitlint
+          TAG="v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag $TAG
+          git push origin $TAG
 
-      - name: Validate commit messages
-        run: |
-          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: brewsource-mcp-binary
+          path: ./release-artifacts/
 
-  security-scan:
-    name: Security Scan & Dependency Vulnerability Check
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (rfv)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
+            ghcr.io/${{ github.repository }}:rfv-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create GitHub pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
+          name: "Release v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}"
+          prerelease: true
+          generate_release_notes: true
+          files: ./release-artifacts/brewsource-mcp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-main-release:
+    name: Create Main Release
     runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          fetch-depth: 0
 
-      - name: Security Scan
-        run: make security
-
-  all-checks:
-    name: All Checks Passed
-    runs-on: ubuntu-latest
-    needs: [lint, test, build, docker, conventional-commits, security-scan]
-    if: always()
-    steps:
-      - name: Check all jobs
+      - name: Get version
+        id: get_version
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "Linting failed"
-            exit 1
-          fi
-          if [[ "${{ needs.test.result }}" != "success" ]]; then
-            echo "Tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "Build failed"
-            exit 1
-          fi
-          if [[ "${{ needs.docker.result }}" != "success" ]]; then
-            echo "Docker build/test failed"
-            exit 1
-          fi
-          # Only check conventional-commits if it ran (on PRs)
-          if [[ "${{ github.event_name }}" == "pull_request" && "${{ needs.conventional-commits.result }}" != "success" ]]; then
-            echo "Conventional commits check failed"
-            exit 1
-          fi
-          if [[ "${{ needs.security-scan.result }}" != "success" ]]; then
-            echo "Security scan failed"
-            exit 1
-          fi
-          echo "All checks passed! ✅"
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create tag for main
+        run: |
+          TAG="v${{ steps.get_version.outputs.version }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: brewsource-mcp-binary
+          path: ./release-artifacts/
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:v${{ steps.get_version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: "Release v${{ steps.get_version.outputs.version }}"
+          generate_release_notes: true
+          files: ./release-artifacts/brewsource-mcp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
