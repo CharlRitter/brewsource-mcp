@@ -247,12 +247,12 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}
+            ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:rfv-latest
 
       - name: Create tag for PR (rfv)
         run: |
-          TAG="v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_attempt }}"
+          TAG="v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}"
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git tag $TAG
