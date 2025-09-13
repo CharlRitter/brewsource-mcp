@@ -134,19 +134,36 @@ Once running, you'll have:
 - **Redis**: localhost:6379
 - **Tilt Dashboard**: http://localhost:10350
 
-## MCP Integration
+## Local MCP Integration
 
-To add BrewSource MCP to your MCP configuration, include the following in your `mcp.json` or equivalent config:
+To connect to the BrewSource MCP server through the Node.js bridge, configure your MCP client to use the bridge as a stdio server. This is especially useful for local development and testing.
+
+When testing locally, your MCP server configuration might look like this:
 
 ```json
 "brewsource": {
-  "type": "stdio",
-  "command": "node",
-  "args": ["/home/charl/workspace/brewsource-mcp/bridge/index.js"]
+    "type": "stdio",
+    "command": "node",
+    "args": [
+        "/path/to/brewsource-mcp/bridge/index.js"
+    ]
 }
 ```
 
-This enables MCP clients to access BrewSource tools and resources via the MCP protocol.
+> **Note:** The above is a general example. If you are running on Windows with WSL, you might use:
+>
+> ```json
+> "command": "C:\\Windows\\System32\\wsl.exe",
+> "args": [
+>   "-d",
+>   "Ubuntu",
+>   "--exec",
+>   "node",
+>   "/home/{user}/workspace/brewsource-mcp/bridge/index.js"
+> ]
+> ```
+>
+> Adapt the `command` and `args` fields as needed for your OS and environment.
 
 ### 1. Clone and Setup
 ```bash
