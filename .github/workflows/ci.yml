@@ -278,7 +278,7 @@ jobs:
     name: Create Main Release
     runs-on: ubuntu-latest
     needs: [build]
-    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -322,7 +322,6 @@ jobs:
           tags: |
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:latest
-          # cache-from and cache-to removed due to unsupported driver on GitHub Actions
 
       - name: Create tag for main
         run: |
