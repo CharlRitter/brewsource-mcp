@@ -9,7 +9,23 @@ on:
 jobs:
   #================================================= Validation jobs =================================================#
 
-  conventional-commits:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Install conventional commit checker
+        run: npm install -g @commitlint/cli @commitlint/config-conventional
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | npx commitlint --config ./commitlint.config.js
+
+  validate-conventional-commits:
     name: Validate Conventional Commits
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
@@ -18,17 +34,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
+          fetch-tags: true
       - name: Install conventional commit checker
         run: npm install -g @commitlint/cli @commitlint/config-conventional
-
-      - name: Validate PR title
+      - name: Validate commit messages in push
         run: |
-          echo "${{ github.event.pull_request.title }}" | npx commitlint
-
-      - name: Validate commit messages
-        run: |
-          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+          npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose --config ./commitlint.config.js || npx commitlint --last --verbose --config ./commitlint.config.js
 
   check-version-bump:
     name: Check VERSION bump on PR to main
@@ -42,11 +53,16 @@ jobs:
 
       - name: Check if VERSION file changed
         run: |
-          git fetch origin ${{ github.base_ref }}
-          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^VERSION$'; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }}
+            RANGE="origin/${{ github.base_ref }}...HEAD"
+          else
+            RANGE="${{ github.event.before }}...${{ github.event.after }}"
+          fi
+          if git diff --name-only $RANGE | grep -q '^VERSION$'; then
             echo "VERSION file was changed."
           else
-            echo "ERROR: VERSION file must be bumped for PRs to main."
+            echo "ERROR: VERSION file must be bumped for changes to main."
             exit 1
           fi
 
@@ -164,7 +180,7 @@ jobs:
   build:
     name: Build Application
     runs-on: ubuntu-latest
-    needs: [check-version-bump, lint, test, conventional-commits, security-scan]
+    needs: [check-version-bump, lint, test, security-scan, validate-conventional-commits]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -204,7 +220,7 @@ jobs:
   create-pr-rfv-release:
     name: Create PR RFV Release
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [validate-pr-title, build]
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
       - name: Checkout code
