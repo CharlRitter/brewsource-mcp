@@ -1,19 +1,23 @@
-# Simple runtime-only Dockerfile
-FROM gcr.io/distroless/static:nonroot
-
+# Build stage
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
-# Copy the pre-built binary
-COPY app/bin/brewsource-mcp ./brewsource-mcp
+# Copy go.mod and go.sum first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Copy BJCP data files
+# Copy the rest of the source code
+COPY . .
+
+# Build the binary
+RUN go build -o /app/brewsource-mcp ./app/cmd/server
+RUN chmod +x /app/brewsource-mcp
+
+# Runtime stage
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /app
+COPY --from=builder /app/brewsource-mcp ./brewsource-mcp
 COPY app/data/ ./data/
-
-# Make sure it's executable (though this should already be set)
 USER nonroot:nonroot
-
-# Expose port
 EXPOSE 8080
-
-# Run the binary
 CMD ["./brewsource-mcp", "-mode=websocket", "-port=8080"]
