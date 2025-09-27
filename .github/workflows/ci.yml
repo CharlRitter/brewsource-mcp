@@ -177,50 +177,10 @@ jobs:
 
   #=============================================== Build & Release jobs ===============================================#
 
-  build:
-    name: Build Application
-    runs-on: ubuntu-latest
-    needs: [check-version-bump, lint, test, security-scan, validate-conventional-commits]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.24'
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Build application
-        run: |
-          mkdir -p app/bin
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o app/bin/brewsource-mcp ./app/cmd/server
-
-      - name: Test binary execution
-        run: |
-          chmod +x app/bin/brewsource-mcp
-          timeout 5s ./app/bin/brewsource-mcp -help || true
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: brewsource-mcp-binary
-          path: app/bin/brewsource-mcp
-
   create-pr-rfv-release:
     name: Create PR RFV Release
     runs-on: ubuntu-latest
-    needs: [validate-pr-title, build]
+    needs: [validate-pr-title, check-version-bump, lint, test, security-scan, validate-conventional-commits]
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
       - name: Checkout code
@@ -238,16 +198,7 @@ jobs:
         id: repo_lower
         run: echo "repo_lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v5
-        with:
-          name: brewsource-mcp-binary
-          path: ./release-artifacts/
 
-      - name: Move binary to app/bin
-        run: |
-          mkdir -p app/bin
-          cp ./release-artifacts/brewsource-mcp app/bin/brewsource-mcp
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -277,7 +228,7 @@ jobs:
   create-main-release:
     name: Create Main Release
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [check-version-bump, lint, test, security-scan, validate-conventional-commits]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
