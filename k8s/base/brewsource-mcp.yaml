@@ -29,7 +29,9 @@ spec:
     spec:
       containers:
       - name: brewsource-mcp
-        image: brewsource-mcp:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+        image: ghcr.io/charlritter/brewsource-mcp:latest
         ports:
         - containerPort: 8080
         envFrom:
