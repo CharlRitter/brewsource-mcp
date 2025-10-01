@@ -9,8 +9,8 @@ RUN go mod download
 # Copy the rest of the source code
 COPY . .
 
-# Build the binary for Linux amd64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/brewsource-mcp ./app/cmd/server
+# Build the binary for Linux
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/brewsource-mcp ./app/cmd/server
 RUN chmod +x /app/brewsource-mcp
 
 # Runtime stage

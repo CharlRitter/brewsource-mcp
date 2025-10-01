@@ -198,7 +198,8 @@ jobs:
         id: repo_lower
         run: echo "repo_lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
-
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -213,6 +214,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}-rfv-${{ github.run_number }}
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:rfv-latest
@@ -246,7 +248,8 @@ jobs:
         id: repo_lower
         run: echo "repo_lowercase=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
-
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -261,6 +264,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:v${{ steps.get_version.outputs.version }}
             ghcr.io/${{ steps.repo_lower.outputs.repo_lowercase }}:latest
