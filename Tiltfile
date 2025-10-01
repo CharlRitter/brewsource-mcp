@@ -9,7 +9,7 @@ k8s_yaml('k8s/app.yaml')
 # Build the Go application
 local_resource(
     'build-go-binary',
-    cmd='cd app && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/brewsource-mcp cmd/server/main.go',
+    cmd='cd app && CGO_ENABLED=0 GOOS=linux go build -o bin/brewsource-mcp cmd/server/main.go',
     deps=['app/cmd', 'app/internal', 'app/pkg', 'app/go.mod', 'app/go.sum']
 )
 

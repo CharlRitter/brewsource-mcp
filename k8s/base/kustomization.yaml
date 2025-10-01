@@ -9,9 +9,10 @@ resources:
   - redis.yaml
   - brewsource-mcp.yaml
 
-commonLabels:
-  project: brewsource-mcp
-  environment: base
+labels:
+  - pairs:
+      project: brewsource-mcp
+      environment: base
 
 images:
   - name: brewsource-mcp

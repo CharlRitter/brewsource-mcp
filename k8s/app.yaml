@@ -16,19 +16,12 @@ spec:
         app: brewsource-mcp
     spec:
       containers:
-      - name: app
-        image: brewsource-mcp:dev
-        env:
-        - name: DATABASE_URL
-          value: postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource?sslmode=disable
-        - name: REDIS_URL
-          value: redis://redis:6379/0
-        - name: LOG_LEVEL
-          value: debug
-        - name: PORT
-          value: "8080"
+      - name: brewsource-mcp-container
+        image: ghcr.io/charlritter/brewsource-mcp:latest
         ports:
         - containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
         readinessProbe:
           httpGet:
             path: /health
@@ -45,12 +38,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: brewsource-mcp
-  namespace: brewsource-dev
+  name: brewsource-mcp-service
 spec:
   selector:
     app: brewsource-mcp
   ports:
-  - port: 8080
+  - protocol: TCP
+    port: 8080
     targetPort: 8080
   type: ClusterIP
