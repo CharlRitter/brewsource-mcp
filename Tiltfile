@@ -1,10 +1,7 @@
 # Tiltfile for BrewSource MCP Server development
 
-# Load Kubernetes YAML
-k8s_yaml('k8s/namespace.yaml')
-k8s_yaml('k8s/postgres.yaml')
-k8s_yaml('k8s/redis.yaml')
-k8s_yaml('k8s/app.yaml')
+# Load Kubernetes YAML using Kustomize
+k8s_yaml(kustomize('k8s/dev'))
 
 # Build the Go application
 local_resource(
@@ -14,7 +11,7 @@ local_resource(
 )
 
 docker_build(
-    'brewsource-mcp:dev',
+    'ghcr.io/charlritter/brewsource-mcp:latest',
     '.',
     dockerfile='Dockerfile',
     platform='linux/amd64'

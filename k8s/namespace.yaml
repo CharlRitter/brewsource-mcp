@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: brewsource-dev
-  labels:
-    app.kubernetes.io/name: brewsource-mcp
-    app.kubernetes.io/instance: dev

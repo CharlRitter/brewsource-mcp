@@ -5,9 +5,9 @@ metadata:
   name: brewsource-mcp-base
 
 resources:
+  - brewsource-mcp.yaml
   - postgres.yaml
   - redis.yaml
-  - brewsource-mcp.yaml
 
 labels:
   - pairs:

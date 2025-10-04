@@ -1,4 +1,4 @@
-# BrewSource MCP Server 🍺
+# [BrewSource MCP Server 🍺](https://github.com/CharlRitter/brewsource-mcp)
 
 A comprehensive Model Context Protocol (MCP) server for brewing resources, built with Go.
 

@@ -195,3 +195,5 @@ kind-kubeconfig*
 
 # Local development tools cache
 .direnv/
+inventory.ini
+postgres-sealedsecret.yaml
