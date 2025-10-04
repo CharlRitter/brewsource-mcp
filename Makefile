@@ -148,9 +148,11 @@ lint-fix:
 # Run security scans using gosec (Go Security Checker) and govulncheck (dependency scanner)
 security:
 	@echo "🔒 Running security scans..."
+	@cd app
 	@echo "Running gosec (Go Security Checker)..."
-	@cd app && go run github.com/securego/gosec/v2/cmd/gosec@latest -fmt json -out ../gosec-report.json ./...
+	@go run github.com/securego/gosec/v2/cmd/gosec@latest -fmt json -out ../gosec-report.json ./...
 	@echo "✅ gosec scan complete (see gosec-report.json)"
 	@echo "Running govulncheck (dependency vulnerability scanner)..."
-	@cd app && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	@go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 	@echo "✅ Dependency vulnerability check complete"
+	@cd ..

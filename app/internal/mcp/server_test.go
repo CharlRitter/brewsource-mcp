@@ -575,6 +575,179 @@ func TestHandleStdio(t *testing.T) {
 	// Function completed, which is expected
 }
 
+// Test utility functions: contains, indexOf, isValidURI.
+func TestUtilityFunctions(t *testing.T) {
+	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
+
+	// Test through ProcessMessage with different scenarios that exercise these functions
+
+	// Test isValidURI through resources/read
+	tests := []struct {
+		name             string
+		uri              string
+		expectInvalidURI bool
+	}{
+		{"valid URI", "test://valid", false},
+		{"empty URI", "", true},
+		{"simple string", "not-a-uri", true}, // This might still be treated as valid
+		{"valid http URI", "http://example.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := &mcp.Message{
+				JSONRPC: "2.0",
+				ID:      "test",
+				Method:  "resources/read",
+				Params:  map[string]interface{}{"uri": tt.uri},
+			}
+			data, _ := json.Marshal(msg)
+			resp := s.ProcessMessage(context.Background(), data)
+
+			if tt.expectInvalidURI {
+				if resp.Error == nil {
+					t.Errorf("Expected error for invalid URI %s", tt.uri)
+				} else if resp.Error.Code != mcp.InvalidParams {
+					t.Errorf("Expected InvalidParams error for URI %s, got %d", tt.uri, resp.Error.Code)
+				}
+			}
+		})
+	}
+}
+
+// Test error handling and edge cases.
+func TestErrorHandling(t *testing.T) {
+	cases := []struct {
+		name         string
+		message      string
+		expectError  bool
+		expectedCode int
+	}{
+		{"empty message", "", true, mcp.ParseError},
+		{"malformed JSON", `{"jsonrpc":"2.0"`, true, mcp.ParseError},
+		{"missing JSONRPC", `{"id":"1","method":"test"}`, true, mcp.InvalidRequest},
+		{"wrong JSONRPC version", `{"jsonrpc":"1.0","id":"1","method":"test"}`, true, mcp.InvalidRequest},
+		{"missing method", `{"jsonrpc":"2.0","id":"1"}`, true, mcp.MethodNotFound},
+		{"invalid method type", `{"jsonrpc":"2.0","id":"1","method":123}`, true, mcp.ParseError},
+		{"notification format", `{"jsonrpc":"2.0","method":"test"}`, true, mcp.MethodNotFound},
+	}
+	for _, c := range cases {
+		runErrorHandlingCase(t, c.name, c.message, c.expectError, c.expectedCode)
+	}
+}
+
+// Helper for error handling test cases.
+func runErrorHandlingCase(t *testing.T, name, message string, expectError bool, expectedCode int) {
+	t.Run(name, func(t *testing.T) {
+		s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
+		resp := s.ProcessMessage(context.Background(), []byte(message))
+
+		if expectError {
+			checkErrorCase(t, resp, expectedCode)
+			return
+		}
+		checkNonErrorCase(t, resp, name)
+	})
+}
+
+func checkErrorCase(t *testing.T, resp *mcp.Message, expectedCode int) {
+	if resp == nil {
+		t.Error("Expected response for invalid message")
+		return
+	}
+	if resp.Error == nil {
+		t.Error("Expected error response")
+		return
+	}
+	if expectedCode != 0 && resp.Error.Code != expectedCode {
+		t.Errorf("Expected error code %d, got %d", expectedCode, resp.Error.Code)
+	}
+}
+
+func checkNonErrorCase(t *testing.T, resp *mcp.Message, name string) {
+	if resp != nil && resp.Error != nil && name == "notification format" {
+		if resp.Error.Code != mcp.MethodNotFound {
+			t.Errorf("Expected MethodNotFound for notification with unknown method, got %d", resp.Error.Code)
+		}
+		return
+	}
+	if resp != nil && resp.Error != nil {
+		t.Errorf("Unexpected error: %v", resp.Error)
+	}
+}
+
+// Test JSON-RPC validation.
+func TestJSONRPCValidation(t *testing.T) {
+	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
+
+	// Test various message validation scenarios
+	tests := []struct {
+		name        string
+		msg         *mcp.Message
+		expectError bool
+		errorCode   int
+	}{
+		{
+			name: "valid request",
+			msg: &mcp.Message{
+				JSONRPC: "2.0",
+				ID:      "1",
+				Method:  "initialize",
+				Params:  map[string]interface{}{},
+			},
+			expectError: false,
+		},
+		{
+			name: "missing ID for request",
+			msg: &mcp.Message{
+				JSONRPC: "2.0",
+				Method:  "initialize",
+				Params:  map[string]interface{}{},
+			},
+			expectError: false, // This is a notification, not an error
+		},
+		{
+			name: "wrong JSONRPC version",
+			msg: &mcp.Message{
+				JSONRPC: "1.0",
+				ID:      "1",
+				Method:  "initialize",
+			},
+			expectError: true,
+			errorCode:   mcp.InvalidRequest,
+		},
+		{
+			name: "empty method",
+			msg: &mcp.Message{
+				JSONRPC: "2.0",
+				ID:      "1",
+				Method:  "",
+			},
+			expectError: true,
+			errorCode:   mcp.MethodNotFound, // Empty method gets treated as unknown method
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, _ := json.Marshal(tt.msg)
+			resp := s.ProcessMessage(context.Background(), data)
+
+			if tt.expectError {
+				if resp == nil || resp.Error == nil {
+					t.Error("Expected error response")
+					return
+				}
+				if tt.errorCode != 0 && resp.Error.Code != tt.errorCode {
+					t.Errorf("Expected error code %d, got %d", tt.errorCode, resp.Error.Code)
+				}
+			} else if resp != nil && resp.Error != nil {
+				t.Errorf("Unexpected error: %v", resp.Error)
+			}
+		})
+	}
+}
+
 // Test matchesPattern function through resource handling.
 func TestMatchesPattern(t *testing.T) {
 	// We can test matchesPattern indirectly by testing resource URI matching

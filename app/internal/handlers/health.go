@@ -43,6 +43,7 @@ func HealthResourceHandler() func(_ context.Context, uri string) (*mcp.ResourceC
 	}
 }
 
+// VersionResourceHandler handles the /version resource.
 func VersionResourceHandler() func(_ context.Context, uri string) (*mcp.ResourceContent, error) {
 	return func(_ context.Context, uri string) (*mcp.ResourceContent, error) {
 		if uri != "/version" {

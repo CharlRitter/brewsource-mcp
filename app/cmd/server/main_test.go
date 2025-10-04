@@ -662,6 +662,7 @@ func TestRunWebSocketServer(t *testing.T) {
 	// Create a mock server
 	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
 	resourceHandlers := handlers.NewResourceHandlers(nil, nil, nil)
+	webHandlers := handlers.NewWebHandlers()
 	server := mcp.NewServer(toolHandlers, resourceHandlers)
 
 	// Test that the function starts without panicking
@@ -675,7 +676,7 @@ func TestRunWebSocketServer(t *testing.T) {
 		}()
 
 		// Use a test port
-		main.RunWebSocketServer(server, "0") // Port 0 will assign a random available port
+		main.RunWebSocketServer(server, webHandlers, "0") // Port 0 will assign a random available port
 	}()
 
 	// Give it a moment to start

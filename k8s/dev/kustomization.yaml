@@ -8,6 +8,8 @@ namespace: brewsource-dev
 
 resources:
   - ../base
+  - namespace.yaml
+  - postgres-secret.yaml
 
 labels:
   - pairs:
@@ -22,4 +24,4 @@ configMapGenerator:
     behavior: merge
     literals:
       - LOG_LEVEL=debug
-      - DATABASE_URL=postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource_dev?sslmode=disable
+      - DATABASE_URL=postgres://brewsource_user:devpassword123@postgres:5432/brewsource_dev?sslmode=disable
