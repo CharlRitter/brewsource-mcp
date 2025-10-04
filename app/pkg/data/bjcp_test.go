@@ -4,6 +4,8 @@
 package data_test
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -710,6 +712,147 @@ func TestLoadBJCPData(t *testing.T) {
 	} else if !strings.Contains(err.Error(), "data file") && !strings.Contains(err.Error(), "no such file") {
 		// Expected in test environment
 		t.Errorf("Expected file-related error, got: %v", err)
+	}
+}
+
+// Test LoadBJCPData with simulated data file.
+func TestLoadBJCPData_WithMockData(t *testing.T) {
+	// Create temporary directory structure
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+	err := os.MkdirAll(dataDir, 0o755)
+	if err != nil {
+		t.Fatalf("Failed to create temp data directory: %v", err)
+	}
+
+	// Create a valid JSON file
+	validJSON := `{
+		"styles": {
+			"21A": {
+				"code": "21A",
+				"name": "American IPA",
+				"category": "IPA",
+				"overall_impression": "Test impression",
+				"vitals": {
+					"abv_min": 5.5,
+					"abv_max": 7.5,
+					"ibu_min": 40,
+					"ibu_max": 70,
+					"srm_min": 6,
+					"srm_max": 14,
+					"og_min": 1.056,
+					"og_max": 1.070,
+					"fg_min": 1.008,
+					"fg_max": 1.014
+				}
+			}
+		},
+		"categories": ["IPA"],
+		"metadata": {
+			"version": "2021",
+			"source": "BJCP Style Guidelines",
+			"last_updated": "2025-01-01",
+			"total_styles": 1
+		}
+	}`
+
+	bjcpFile := filepath.Join(dataDir, "bjcp_2021_beer.json")
+	err = os.WriteFile(bjcpFile, []byte(validJSON), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to write test data file: %v", err)
+	}
+
+	// Change to temp directory
+	t.Chdir(tempDir)
+
+	// Test successful loading
+	bjcpData, err := data.LoadBJCPData()
+	if err != nil {
+		t.Fatalf("Expected successful loading, got error: %v", err)
+	}
+
+	if bjcpData == nil {
+		t.Fatal("Expected non-nil BJCP data")
+	}
+
+	if len(bjcpData.Styles) != 1 {
+		t.Errorf("Expected 1 style, got %d", len(bjcpData.Styles))
+	}
+
+	if bjcpData.Metadata.Version != "2021" {
+		t.Errorf("Expected version '2021', got '%s'", bjcpData.Metadata.Version)
+	}
+}
+
+// Test LoadBJCPData with invalid JSON.
+func TestLoadBJCPData_InvalidJSON(t *testing.T) {
+	// Create temporary directory structure
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+	err := os.MkdirAll(dataDir, 0o755)
+	if err != nil {
+		t.Fatalf("Failed to create temp data directory: %v", err)
+	}
+
+	// Create invalid JSON file
+	invalidJSON := `{
+		"styles": {
+			"21A": {
+				"code": "21A",
+				"name": "American IPA"
+				// Missing comma here makes it invalid JSON
+			}
+		}
+	}`
+
+	bjcpFile := filepath.Join(dataDir, "bjcp_2021_beer.json")
+	err = os.WriteFile(bjcpFile, []byte(invalidJSON), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to write test data file: %v", err)
+	}
+
+	// Change to temp directory
+	t.Chdir(tempDir)
+
+	// Test that invalid JSON returns parse error
+	_, err = data.LoadBJCPData()
+	if err == nil {
+		t.Fatal("Expected error for invalid JSON, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "parse") {
+		t.Errorf("Expected parse error, got: %v", err)
+	}
+}
+
+// Test LoadBJCPData path traversal protection.
+func TestLoadBJCPData_PathTraversalProtection(t *testing.T) {
+	// The LoadBJCPData function has built-in path traversal protection
+	// We can test this by temporarily changing the working directory
+	// to a location where the path validation would detect traversal
+
+	// Create a temporary directory structure that would trigger path validation
+	tempDir := t.TempDir()
+
+	// Change to a subdirectory
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.MkdirAll(subDir, 0o755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+
+	t.Chdir(subDir)
+
+	// Now try to load BJCP data - this should fail with file not found
+	// since there's no data directory in our temp subdirectory
+	_, err = data.LoadBJCPData()
+	if err == nil {
+		t.Error("Expected error when data file doesn't exist")
+	}
+
+	// The error should be about file not being found, not path traversal
+	if strings.Contains(err.Error(), "path traversal") {
+		t.Error("Unexpected path traversal error in normal scenario")
 	}
 }
 

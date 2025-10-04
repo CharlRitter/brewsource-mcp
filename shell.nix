@@ -16,7 +16,7 @@ pkgs.mkShell {
     direnv
 
     # Application development
-    go_1_21
+    go_1_24
     postgresql
     redis
 

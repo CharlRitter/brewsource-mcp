@@ -90,6 +90,7 @@ func main() {
 	// Initialize handlers
 	toolHandlers := handlers.NewToolHandlers(bjcpData, beerService, breweryService)
 	resourceHandlers := handlers.NewResourceHandlers(bjcpData, beerService, breweryService)
+	webHandlers := handlers.NewWebHandlers()
 
 	// Initialize MCP server
 	mcpServer := mcp.NewServer(toolHandlers, resourceHandlers)
@@ -105,7 +106,7 @@ func main() {
 	switch *mode {
 	case "websocket":
 		shouldDefer = true
-		RunWebSocketServer(mcpServer, *port)
+		RunWebSocketServer(mcpServer, webHandlers, *port)
 	case "stdio":
 		shouldDefer = true
 		RunStdioServer(mcpServer)
@@ -120,6 +121,7 @@ func main() {
 	}
 }
 
+// InitDatabase initializes and configures the PostgreSQL database connection.
 func InitDatabase() (*sqlx.DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -151,6 +153,7 @@ func InitDatabase() (*sqlx.DB, error) {
 	return db, nil
 }
 
+// InitRedis initializes and configures the Redis client connection.
 func InitRedis(redisURL string) *redis.Client {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -173,36 +176,19 @@ func InitRedis(redisURL string) *redis.Client {
 	return client
 }
 
-func RunWebSocketServer(mcpServer *mcp.Server, port string) {
+// RunWebSocketServer starts the HTTP server with WebSocket support for MCP connections.
+func RunWebSocketServer(mcpServer *mcp.Server, webHandlers *handlers.WebHandlers, port string) {
 	// Create HTTP server
 	mux := http.NewServeMux()
 
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status": "healthy", "service": "brewsource-mcp", "version": "1.0.0"}`)
-	})
+	// Landing page (serves HTML with README content)
+	mux.HandleFunc("/", webHandlers.ServeHome)
 
-	// Server info endpoint
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{
-			"name": "BrewSource MCP Server",
-			"version": "1.0.0",
-			"description": "Model Context Protocol server for brewing resources",
-			"endpoints": {
-				"mcp": "/mcp",
-				"health": "/health"
-			},
-			"phase": "Phase 1 MVP"
-		}`)
-	})
+	// API information endpoint (serves JSON)
+	mux.HandleFunc("/api", webHandlers.ServeAPI)
+
+	// Health check endpoint (supports both JSON and HTMX)
+	mux.HandleFunc("/health", webHandlers.ServeHealth)
 
 	// MCP WebSocket endpoint
 	mux.HandleFunc("/mcp", mcpServer.HandleWebSocket)
@@ -239,6 +225,7 @@ func RunWebSocketServer(mcpServer *mcp.Server, port string) {
 	}
 }
 
+// RunStdioServer starts the stdio-based MCP server for direct communication.
 func RunStdioServer(mcpServer *mcp.Server) {
 	logrus.Info("Starting stdio server")
 

@@ -8,6 +8,9 @@ namespace: default
 
 resources:
   - ../base
+  - postgres-sealedsecret.yaml
+  - letsencrypt-clusterissuer.yaml
+  - ingress.yaml
 
 labels:
   - pairs:
@@ -21,4 +24,4 @@ configMapGenerator:
   - name: brewsource-config
     behavior: merge
     literals:
-      - DATABASE_URL=postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource_prod?sslmode=disable
+      - DATABASE_URL=postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/brewsource_prod?sslmode=disable

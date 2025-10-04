@@ -6,8 +6,6 @@ metadata:
     app: postgres
 data:
   POSTGRES_DB: brewsource
-  POSTGRES_USER: brewsource_user
-  POSTGRES_PASSWORD: brewsource_pass
 
 ---
 apiVersion: v1
@@ -42,33 +40,33 @@ spec:
     spec:
       containers:
       - name: postgres
+        securityContext:
+          allowPrivilegeEscalation: false
         image: postgres:15-alpine
         ports:
         - containerPort: 5432
         envFrom:
         - configMapRef:
             name: postgres-config
+        - secretRef:
+            name: postgres-secret
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
         readinessProbe:
           exec:
             command:
-            - pg_isready
-            - -U
-            - brewsource_user
-            - -d
-            - brewsource
+            - sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
           initialDelaySeconds: 5
           periodSeconds: 5
         livenessProbe:
           exec:
             command:
-            - pg_isready
-            - -U
-            - brewsource_user
-            - -d
-            - brewsource
+            - sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
           initialDelaySeconds: 30
           periodSeconds: 10
       volumes:
