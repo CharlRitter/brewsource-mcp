@@ -184,6 +184,9 @@ func RunWebSocketServer(mcpServer *mcp.Server, webHandlers *handlers.WebHandlers
 	// Landing page (serves HTML with README content)
 	mux.HandleFunc("/", webHandlers.ServeHome)
 
+	// Favicon handler
+	mux.HandleFunc("/favicon.ico", webHandlers.ServeFavicon)
+
 	// API information endpoint (serves JSON)
 	mux.HandleFunc("/api", webHandlers.ServeAPI)
 

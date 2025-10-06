@@ -1,0 +1,172 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: brewsource-mcp-network-policy
+  namespace: brewsource-prod
+  labels:
+    environment: production
+spec:
+  podSelector:
+    matchLabels:
+      app: brewsource-mcp
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Traefik ingress controller to reach the app from kube-system namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow internal cluster traffic (for health checks and debugging)
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow HTTPS outbound (for external API calls)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP outbound (if needed)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+  # Allow connection to PostgreSQL
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow connection to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-network-policy
+  namespace: brewsource-prod
+  labels:
+    environment: production
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow brewsource-mcp to connect to PostgreSQL
+  - from:
+    - podSelector:
+        matchLabels:
+          app: brewsource-mcp
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: brewsource-prod
+  labels:
+    environment: production
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow brewsource-mcp to connect to Redis
+  - from:
+    - podSelector:
+        matchLabels:
+          app: brewsource-mcp
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cert-manager-network-policy
+  namespace: brewsource-prod
+  labels:
+    environment: production
+spec:
+  podSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Traefik to reach ACME HTTP solver
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8089
+  # Allow external access for ACME challenge validation
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8089
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow HTTPS to Let's Encrypt
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443

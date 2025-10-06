@@ -1,6 +1,8 @@
 # BrewSource MCP Server Testing Guide
 
-This document provides a comprehensive overview of the testing strategy, user stories, and quality criteria for the BrewSource MCP Server. It covers the test plan, test categories, sample data, automation, and acceptance criteria for Phase 1 MVP.
+This document provides a comprehensive overview of the testing strategy, user stories, and quality criteria for the
+ BrewSource MCP Server. It covers the test plan, test categories, sample data, automation, and acceptance criteria for
+ Phase 1 MVP.
 
 ---
 
@@ -24,13 +26,16 @@ This document provides a comprehensive overview of the testing strategy, user st
 
 ## Test Strategy Overview
 
-This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase 1 MVP functionality. Testing follows a multi-layered approach covering unit tests, integration tests, and end-to-end scenarios including happy paths, error conditions, and boundary cases.
+This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase 1 MVP functionality. Testing follows a
+ multi-layered approach covering unit tests, integration tests, and end-to-end scenarios including happy paths, error
+ conditions, and boundary cases.
 
 ---
 
 ## Test Scope
 
 ### In Scope (Phase 1 MVP)
+
 - MCP protocol compliance and communication
 - BJCP style lookup functionality (`bjcp_lookup`)
 - Beer search functionality (`search_beers`)
@@ -41,6 +46,7 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 - WebSocket and stdio connection modes
 
 ### Out of Scope (Future Phases)
+
 - User authentication and authorization
 - Premium features and Brewfather integration
 - Recipe generation and ingredient comparison
@@ -52,12 +58,14 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 ## Test Environment Requirements
 
 ### Development Environment
+
 - Go 1.21+ test runner
 - PostgreSQL test database with sample data
 - Redis instance for caching tests (optional)
 - MCP client simulator for protocol testing
 
 ### Test Data Requirements
+
 - Sample BJCP style data (minimum 10 styles including edge cases)
 - Sample brewery data (minimum 20 breweries across different locations)
 - Sample beer data (minimum 50 beers linked to breweries)
@@ -69,21 +77,25 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 ## Test Categories
 
 ### 1. Unit Tests
+
 - BJCP style code parsing and normalization
 - BJCP style data retrieval
 - Beer and brewery search algorithms
 - Input validation (presence, type, value)
 
 ### 2. Integration Tests
+
 - Database integration and query correctness
 - MCP protocol handshake and tool/resource listing
 - WebSocket communication and error handling
 
 ### 3. End-to-End Tests
+
 - Complete user journeys (lookup, search, discovery)
 - Performance and load testing (single user, concurrent users, sustained load, large datasets)
 
 ### 4. Error Handling and Edge Case Tests
+
 - Input validation and error response scenarios
 - System resilience (DB connectivity, memory pressure, corrupted data, concurrent access)
 
@@ -92,6 +104,7 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 ## Test Data Management
 
 ### Sample Data Requirements
+
 - Valid and invalid BJCP style codes
 - Diverse beer and brewery entries (names, styles, locations, edge cases)
 - Automated setup, isolation, cleanup, and refresh of test data
@@ -111,18 +124,21 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ All user stories pass acceptance criteria
 - ✅ 100% of Phase 1 tools working correctly
 - ✅ MCP protocol compliance verified
 - ✅ Error handling working as specified
 
 ### Performance Requirements
+
 - ✅ 95% of requests complete within 500ms
 - ✅ Server handles 50 concurrent users
 - ✅ Memory usage stable under load
 - ✅ Database queries optimized
 
 ### Quality Requirements
+
 - ✅ 95%+ code coverage from automated tests
 - ✅ Zero critical or high-severity bugs
 - ✅ All security vulnerabilities addressed
@@ -148,11 +164,13 @@ This section contains user stories written in Gherkin syntax for the BrewSource 
 ### Epic 1: BJCP Style Lookup
 
 #### Feature: BJCP Style Information Retrieval
+
 As an AI assistant integrating with BrewSource MCP Server
 I want to retrieve detailed BJCP beer style information
 So that I can provide accurate brewing guidance to users
 
 ##### Story 1.1: Valid BJCP Style Code Lookup
+
 ```gherkin
 Scenario: Retrieve style information with valid BJCP code
   Given the MCP server is running and initialized
@@ -166,6 +184,7 @@ Scenario: Retrieve style information with valid BJCP code
 ```
 
 ##### Story 1.2: Valid BJCP Style Code with Different Format
+
 ```gherkin
 Scenario: Retrieve style information with lowercase style code
   Given the MCP server is running and initialized
@@ -175,6 +194,7 @@ Scenario: Retrieve style information with lowercase style code
 ```
 
 ##### Story 1.3: Invalid BJCP Style Code
+
 ```gherkin
 Scenario: Attempt to retrieve style with invalid code
   Given the MCP server is running and initialized
@@ -185,6 +205,7 @@ Scenario: Attempt to retrieve style with invalid code
 ```
 
 ##### Story 1.4: Missing Style Code Parameter
+
 ```gherkin
 Scenario: Call bjcp_lookup without required parameter
   Given the MCP server is running and initialized
@@ -195,6 +216,7 @@ Scenario: Call bjcp_lookup without required parameter
 ```
 
 ##### Story 1.5: Empty Style Code Parameter
+
 ```gherkin
 Scenario: Call bjcp_lookup with empty style code
   Given the MCP server is running and initialized
@@ -205,6 +227,7 @@ Scenario: Call bjcp_lookup with empty style code
 ```
 
 ##### Story 1.6: Boundary Case - Maximum Length Style Code
+
 ```gherkin
 Scenario: Call bjcp_lookup with excessively long style code
   Given the MCP server is running and initialized
@@ -216,11 +239,13 @@ Scenario: Call bjcp_lookup with excessively long style code
 ### Epic 2: Beer Search Functionality
 
 #### Feature: Commercial Beer Catalog Search
+
 As an AI assistant user
 I want to search for commercial beers by various criteria
 So that I can discover beers and get information about them
 
 ##### Story 2.1: Basic Beer Name Search
+
 ```gherkin
 Scenario: Search for beers by name
   Given the MCP server is running and initialized
@@ -233,6 +258,7 @@ Scenario: Search for beers by name
 ```
 
 ##### Story 2.2: Beer Search with Style Filter
+
 ```gherkin
 Scenario: Search for beers with style filter
   Given the MCP server is running and initialized
@@ -244,6 +270,7 @@ Scenario: Search for beers with style filter
 ```
 
 ##### Story 2.3: Beer Search with Custom Limit
+
 ```gherkin
 Scenario: Search for beers with custom result limit
   Given the MCP server is running and initialized
@@ -254,6 +281,7 @@ Scenario: Search for beers with custom result limit
 ```
 
 ##### Story 2.4: Beer Search with No Results
+
 ```gherkin
 Scenario: Search for beers that don't exist
   Given the MCP server is running and initialized
@@ -264,6 +292,7 @@ Scenario: Search for beers that don't exist
 ```
 
 ##### Story 2.5: Beer Search Missing Query Parameter
+
 ```gherkin
 Scenario: Call search_beers without required query parameter
   Given the MCP server is running and initialized
@@ -274,6 +303,7 @@ Scenario: Call search_beers without required query parameter
 ```
 
 ##### Story 2.6: Beer Search with Empty Query
+
 ```gherkin
 Scenario: Call search_beers with empty query
   Given the MCP server is running and initialized
@@ -284,6 +314,7 @@ Scenario: Call search_beers with empty query
 ```
 
 ##### Story 2.7: Boundary Case - Very Large Limit
+
 ```gherkin
 Scenario: Search with excessively large limit
   Given the MCP server is running and initialized
@@ -293,6 +324,7 @@ Scenario: Search with excessively large limit
 ```
 
 ##### Story 2.8: Boundary Case - Negative Limit
+
 ```gherkin
 Scenario: Search with negative limit
   Given the MCP server is running and initialized
@@ -304,11 +336,13 @@ Scenario: Search with negative limit
 ### Epic 3: Brewery Discovery
 
 #### Feature: Brewery Directory Search
+
 As an AI assistant user
 I want to find breweries by location or name
 So that I can discover local breweries and get their information
 
 ##### Story 3.1: Find Brewery by Name
+
 ```gherkin
 Scenario: Search for brewery by name
   Given the MCP server is running and initialized
@@ -320,6 +354,7 @@ Scenario: Search for brewery by name
 ```
 
 ##### Story 3.2: Find Brewery by Location
+
 ```gherkin
 Scenario: Search for breweries by location
   Given the MCP server is running and initialized
@@ -331,6 +366,7 @@ Scenario: Search for breweries by location
 ```
 
 ##### Story 3.3: Find Brewery by Both Name and Location
+
 ```gherkin
 Scenario: Search for breweries with both name and location
   Given the MCP server is running and initialized
@@ -340,6 +376,7 @@ Scenario: Search for breweries with both name and location
 ```
 
 ##### Story 3.4: Find Brewery with No Results
+
 ```gherkin
 Scenario: Search for breweries that don't exist
   Given the MCP server is running and initialized
@@ -350,6 +387,7 @@ Scenario: Search for breweries that don't exist
 ```
 
 ##### Story 3.5: Find Brewery Missing Parameters
+
 ```gherkin
 Scenario: Call find_breweries without required parameters
   Given the MCP server is running and initialized
@@ -360,6 +398,7 @@ Scenario: Call find_breweries without required parameters
 ```
 
 ##### Story 3.6: Find Brewery with Empty Parameters
+
 ```gherkin
 Scenario: Call find_breweries with empty name and location
   Given the MCP server is running and initialized
@@ -372,11 +411,13 @@ Scenario: Call find_breweries with empty name and location
 ### Epic 4: MCP Protocol Compliance
 
 #### Feature: MCP Server Initialization
+
 As an MCP client
 I want to properly initialize connection with the server
 So that I can use the brewing tools and resources
 
 ##### Story 4.1: Successful Server Initialization
+
 ```gherkin
 Scenario: Initialize MCP server connection
   Given the MCP server is running
@@ -387,6 +428,7 @@ Scenario: Initialize MCP server connection
 ```
 
 ##### Story 4.2: List Available Tools
+
 ```gherkin
 Scenario: Request list of available tools
   Given the MCP server is running and initialized
@@ -398,6 +440,7 @@ Scenario: Request list of available tools
 ```
 
 ##### Story 4.3: List Available Resources
+
 ```gherkin
 Scenario: Request list of available resources
   Given the MCP server is running and initialized
@@ -408,6 +451,7 @@ Scenario: Request list of available resources
 ```
 
 ##### Story 4.4: Server Not Initialized Error
+
 ```gherkin
 Scenario: Call tools before server initialization
   Given the MCP server is running but not initialized
@@ -419,11 +463,13 @@ Scenario: Call tools before server initialization
 ### Epic 5: Data Validation and Edge Cases
 
 #### Feature: Input Validation and Error Handling
+
 As a system administrator
 I want the server to handle invalid inputs gracefully
 So that the system remains stable and provides helpful error messages
 
 ##### Story 5.1: Malformed JSON Request
+
 ```gherkin
 Scenario: Send malformed JSON to server
   Given the MCP server is running and initialized
@@ -433,6 +479,7 @@ Scenario: Send malformed JSON to server
 ```
 
 ##### Story 5.2: Unknown Tool Request
+
 ```gherkin
 Scenario: Call non-existent tool
   Given the MCP server is running and initialized
@@ -443,6 +490,7 @@ Scenario: Call non-existent tool
 ```
 
 ##### Story 5.3: Invalid Parameter Types
+
 ```gherkin
 Scenario: Call tool with wrong parameter types
   Given the MCP server is running and initialized
@@ -452,6 +500,7 @@ Scenario: Call tool with wrong parameter types
 ```
 
 ##### Story 5.4: Null Parameter Values
+
 ```gherkin
 Scenario: Call tool with null parameter values
   Given the MCP server is running and initialized
@@ -463,11 +512,13 @@ Scenario: Call tool with null parameter values
 ### Epic 6: Performance and Reliability
 
 #### Feature: System Performance and Reliability
+
 As a system user
 I want the server to respond quickly and reliably
 So that I can depend on it for brewing information
 
 ##### Story 6.1: Response Time Requirements
+
 ```gherkin
 Scenario: Measure response times for all tools
   Given the MCP server is running and initialized
@@ -477,6 +528,7 @@ Scenario: Measure response times for all tools
 ```
 
 ##### Story 6.2: Concurrent Request Handling
+
 ```gherkin
 Scenario: Handle multiple simultaneous requests
   Given the MCP server is running and initialized
@@ -487,6 +539,7 @@ Scenario: Handle multiple simultaneous requests
 ```
 
 ##### Story 6.3: Large Dataset Queries
+
 ```gherkin
 Scenario: Query with broad search terms
   Given the MCP server is running and initialized
@@ -500,11 +553,13 @@ Scenario: Query with broad search terms
 ### Epic 7: Database Connectivity and Error Recovery
 
 #### Feature: Database Error Handling
+
 As a system administrator
 I want the server to handle database issues gracefully
 So that temporary database problems don't crash the server
 
 ##### Story 7.1: Database Connection Loss
+
 ```gherkin
 Scenario: Handle temporary database disconnection
   Given the MCP server is running and initialized
@@ -516,6 +571,7 @@ Scenario: Handle temporary database disconnection
 ```
 
 ##### Story 7.2: Empty Database Handling
+
 ```gherkin
 Scenario: Query tools when database is empty
   Given the MCP server is running and initialized
@@ -526,6 +582,7 @@ Scenario: Query tools when database is empty
 ```
 
 ##### Story 7.3: Corrupted Data Handling
+
 ```gherkin
 Scenario: Handle corrupted data in database
   Given the MCP server is running and initialized

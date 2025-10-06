@@ -5,6 +5,7 @@ This file recognizes the people who have contributed to BrewSource MCP Server.
 ## Project Founder & Maintainer
 
 ### [CharlRitter](https://github.com/CharlRitter)
+
 - **Role**: Project Founder, Lead Maintainer
 - **Contributions**:
   - Initial project conception and architecture
@@ -16,7 +17,8 @@ This file recognizes the people who have contributed to BrewSource MCP Server.
 
 ## How to Become a Contributor
 
-We welcome contributions from developers, brewers, and anyone interested in the intersection of technology and brewing! Here's how you can get involved:
+We welcome contributions from developers, brewers, and anyone interested in the intersection of technology and brewing!
+Here's how you can get involved:
 
 ### Types of Contributions
 
@@ -47,26 +49,31 @@ We welcome contributions from developers, brewers, and anyone interested in the 
 ### Recognition Levels
 
 #### 🌟 **Core Contributors**
+
 Contributors who have made significant, ongoing contributions to the project across multiple areas.
 
 *Currently: None - as the project is just starting!*
 
 #### 🍺 **Brewing Experts**
+
 Contributors who provide brewing domain expertise, validate brewing science, and ensure accuracy of brewing-related features.
 
 *Currently: None - we're looking for brewing experts to join!*
 
 #### 💻 **Technical Contributors**
+
 Contributors who have made significant code contributions, improved architecture, or enhanced the MCP implementation.
 
 *Currently: None - we're looking for Go developers and MCP enthusiasts!*
 
 #### 📖 **Documentation Contributors**
+
 Contributors who have significantly improved documentation, created tutorials, or enhanced the learning experience.
 
 *Currently: None - we need documentation enthusiasts!*
 
 #### 🎯 **Regular Contributors**
+
 Contributors who have made multiple valuable contributions to the project.
 
 *Currently: None - be among the first!*
@@ -81,6 +88,7 @@ Contributors who have made multiple valuable contributions to the project.
 ### Contribution Guidelines
 
 Please see our [Contributing Guidelines](.github/CONTRIBUTING.md) for detailed information on:
+
 - Development setup
 - Code standards
 - Pull request process
@@ -88,20 +96,25 @@ Please see our [Contributing Guidelines](.github/CONTRIBUTING.md) for detailed i
 
 ## Past Contributors
 
-As the project grows, we'll maintain a record of past contributors who have moved on to other projects but made valuable contributions during their time with BrewSource MCP Server.
+As the project grows, we'll maintain a record of past contributors who have moved on to other projects but made valuable
+ contributions during their time with BrewSource MCP Server.
 
 *Currently: None - this section will grow as the project evolves!*
 
 ## Special Thanks
 
 ### Inspiration and Resources
-- **[BJCP](https://www.bjcp.org/)** - For the comprehensive beer style guidelines that form the foundation of our brewing knowledge
-- **[Model Context Protocol](https://modelcontextprotocol.io/)** - For creating the protocol that enables AI assistants to access specialized knowledge
+
+- **[BJCP](https://www.bjcp.org/)** - For the comprehensive beer style guidelines that form the foundation of our brewing
+ knowledge
+- **[Model Context Protocol](https://modelcontextprotocol.io/)** - For creating the protocol that enables AI assistants
+ to access specialized knowledge
 - **[Go Community](https://golang.org/community)** - For the excellent language and development ecosystem
 - **[Open Brewery DB](https://openbrewerydb.org/)** - For inspiration on open brewing data
 - **[Homebrewing Community](https://www.homebrewtalk.com/)** - For the tradition of freely sharing brewing knowledge
 
 ### Open Source Tools
+
 - **GitHub** - For hosting and collaboration tools
 - **PostgreSQL** - For robust data storage
 - **Redis** - For performance optimization
@@ -137,6 +150,6 @@ As the project grows, we plan to:
 
 **Want to see your name here?** Check out our [Contributing Guidelines](.github/CONTRIBUTING.md) and start contributing today!
 
-**Thank you to all contributors who help make BrewSource MCP Server a valuable resource for the brewing and development communities!** 🍺
+**Thank you to all contributors who help make BrewSource MCP Server a valuable resource for the brewing and development communities!**
 
 *Last updated: July 5, 2025*

@@ -2,9 +2,13 @@
 
 ## Our Pledge
 
-We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
+We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for
+ everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity
+ and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste,
+ color, religion, or sexual identity and orientation.
 
-We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community centered around our shared passion for brewing and technology.
+We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community
+ centered around our shared passion for brewing and technology.
 
 ## Our Standards
 
@@ -13,6 +17,7 @@ We pledge to act and interact in ways that contribute to an open, welcoming, div
 Examples of behavior that contributes to a positive environment for our community include:
 
 #### General Community Standards
+
 - **Demonstrating empathy and kindness** toward other community members
 - **Being respectful** of differing opinions, viewpoints, and experiences
 - **Giving and gracefully accepting** constructive feedback
@@ -20,6 +25,7 @@ Examples of behavior that contributes to a positive environment for our communit
 - **Focusing on what is best** not just for us as individuals, but for the overall community
 
 #### Brewing Community Values
+
 - **Sharing knowledge freely** - The brewing community thrives on shared knowledge and experimentation
 - **Encouraging newcomers** - Everyone starts somewhere, whether in brewing or programming
 - **Celebrating diversity** - Different brewing traditions, styles, and approaches make our community stronger
@@ -27,6 +33,7 @@ Examples of behavior that contributes to a positive environment for our communit
 - **Fostering learning** - Help others learn about brewing, MCP, Go programming, or any relevant topics
 
 #### Technical Community Standards
+
 - **Constructive code review** - Provide helpful, specific feedback that helps improve code quality
 - **Educational approach** - Explain the "why" behind technical decisions to help others learn
 - **Documentation focus** - Help maintain clear, accurate documentation for all skill levels
@@ -38,6 +45,7 @@ Examples of behavior that contributes to a positive environment for our communit
 The following behaviors are considered harassment and are unacceptable within our community:
 
 #### General Harassment
+
 - **Violent threats or language** directed against another person
 - **Discriminatory jokes and language** related to protected characteristics
 - **Posting sexually explicit or violent material**
@@ -46,6 +54,7 @@ The following behaviors are considered harassment and are unacceptable within ou
 - **Advocating for, or encouraging, any of the above behavior**
 
 #### Technical Harassment
+
 - **Deliberately posting incorrect brewing information** that could be dangerous (e.g., unsafe fermentation practices)
 - **Sabotaging code or documentation** with malicious intent
 - **Spamming pull requests or issues** with low-quality or off-topic content
@@ -53,6 +62,7 @@ The following behaviors are considered harassment and are unacceptable within ou
 - **Doxxing or sharing private information** without explicit permission
 
 #### Community-Specific Issues
+
 - **Alcohol promotion to minors** - This is an educational brewing resource, not a platform for promoting alcohol consumption
 - **Commercial spam** - Excessive promotion of commercial brewing products or services
 - **Brewing elitism** - Dismissing others based on their brewing experience, equipment, or preferences
@@ -60,13 +70,17 @@ The following behaviors are considered harassment and are unacceptable within ou
 
 ## Enforcement Responsibilities
 
-Community leaders are responsible for clarifying and enforcing our standards of acceptable behavior and will take appropriate and fair corrective action in response to any behavior that they deem inappropriate, threatening, offensive, or harmful.
+Community leaders are responsible for clarifying and enforcing our standards of acceptable behavior and will take appropriate
+and fair corrective action in response to any behavior that they deem inappropriate, threatening, offensive, or harmful.
 
-Community leaders have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned with this Code of Conduct, and will communicate reasons for moderation decisions when appropriate.
+Community leaders have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues,
+ and other contributions that are not aligned with this Code of Conduct, and will communicate reasons for moderation
+ decisions when appropriate.
 
 ## Scope
 
-This Code of Conduct applies within all community spaces, and also applies when an individual is officially representing the community in public spaces. Examples of representing our community include:
+This Code of Conduct applies within all community spaces, and also applies when an individual is officially representing
+ the community in public spaces. Examples of representing our community include:
 
 - **GitHub repositories** - Issues, pull requests, discussions, and code comments
 - **Communication channels** - Any official project communication platforms
@@ -78,9 +92,10 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ### How to Report
 
-If you experience or witness unacceptable behavior, or have any other concerns, please report it by contacting the project team at:
+If you experience or witness unacceptable behavior, or have any other concerns, please report it by contacting the project
+ team at:
 
-- **Email**: conduct@brewsource-mcp.dev
+- **Email**: <conduct@brewsource-mcp.dev>
 - **GitHub**: Create a private security advisory for sensitive issues
 - **Direct Message**: Contact project maintainers directly for urgent matters
 
@@ -96,33 +111,43 @@ When reporting, please include:
 
 ### Confidentiality
 
-All reports will be reviewed and investigated promptly and fairly. The project team is obligated to maintain confidentiality with regard to the reporter of an incident. We may involve additional team members or external experts when necessary to properly address the situation.
+All reports will be reviewed and investigated promptly and fairly. The project team is obligated to maintain confidentiality
+ with regard to the reporter of an incident. We may involve additional team members or external experts when necessary to
+ properly address the situation.
 
 ## Enforcement Actions
 
-Community leaders will follow these Community Impact Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
+Community leaders will follow these Community Impact Guidelines in determining the consequences for any action they deem
+ in violation of this Code of Conduct:
 
 ### 1. Correction
 
 **Community Impact**: Use of inappropriate language or other behavior deemed unprofessional or unwelcome in the community.
 
-**Consequence**: A private, written warning from community leaders, providing clarity around the nature of the violation and an explanation of why the behavior was inappropriate. A public apology may be requested.
+**Consequence**: A private, written warning from community leaders, providing clarity around the nature of the violation
+ and an explanation of why the behavior was inappropriate. A public apology may be requested.
 
 ### 2. Warning
 
 **Community Impact**: A violation through a single incident or series of actions.
 
-**Consequence**: A warning with consequences for continued behavior. No interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, for a specified period of time. This includes avoiding interactions in community spaces as well as external channels like social media. Violating these terms may lead to a temporary or permanent ban.
+**Consequence**: A warning with consequences for continued behavior. No interaction with the people involved, including
+ unsolicited interaction with those enforcing the Code of Conduct, for a specified period of time. This includes avoiding
+ interactions in community spaces as well as external channels like social media. Violating these terms may lead to a
+ temporary or permanent ban.
 
 ### 3. Temporary Ban
 
 **Community Impact**: A serious violation of community standards, including sustained inappropriate behavior.
 
-**Consequence**: A temporary ban from any sort of interaction or public communication with the community for a specified period of time. No public or private interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, is allowed during this period. Violating these terms may lead to a permanent ban.
+**Consequence**: A temporary ban from any sort of interaction or public communication with the community for a specified
+ period of time. No public or private interaction with the people involved, including unsolicited interaction with those
+ enforcing the Code of Conduct, is allowed during this period. Violating these terms may lead to a permanent ban.
 
 ### 4. Permanent Ban
 
-**Community Impact**: Demonstrating a pattern of violation of community standards, including sustained inappropriate behavior, harassment of an individual, or aggression toward or disparagement of classes of individuals.
+**Community Impact**: Demonstrating a pattern of violation of community standards, including sustained inappropriate
+ behavior, harassment of an individual, or aggression toward or disparagement of classes of individuals.
 
 **Consequence**: A permanent ban from any sort of public interaction within the community.
 
@@ -130,7 +155,7 @@ Community leaders will follow these Community Impact Guidelines in determining t
 
 If you believe you have been unfairly accused of violating this Code of Conduct, you may appeal the decision by:
 
-1. **Sending an email** to conduct-appeal@brewsource-mcp.dev
+1. **Sending an email** to <conduct-appeal@brewsource-mcp.dev>
 2. **Including relevant context** and any additional information
 3. **Waiting for review** by a different set of community leaders
 4. **Participating in good faith** in any follow-up discussions
@@ -163,28 +188,33 @@ If you believe you have been unfairly accused of violating this Code of Conduct,
 ## Resources
 
 ### Community Resources
+
 - [Contributing Guidelines](.github/CONTRIBUTING.md) - How to contribute to the project
 - [Security Policy](.github/SECURITY.md) - How to report security issues
 - [Project Documentation](docs/) - Comprehensive project documentation
 
 ### External Resources
+
 - [Contributor Covenant](https://www.contributor-covenant.org/) - The original inspiration for this code of conduct
 - [GitHub Community Guidelines](https://docs.github.com/en/site-policy/github-terms/github-community-guidelines)
 - [Go Community Code of Conduct](https://golang.org/conduct)
 
 ### Brewing Resources
+
 - [BJCP Guidelines](https://www.bjcp.org/) - Official beer style guidelines
 - [Homebrew Community Forums](https://www.homebrewtalk.com/) - General brewing discussion
 - [American Homebrewers Association](https://www.homebrewersassociation.org/) - Homebrewing resources
 
 ## Acknowledgment
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1, and has been customized for the brewing and technical communities that make up our project.
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1, and
+has been customized for the brewing and technical communities that make up our project.
 
-For answers to common questions about this code of conduct, see the FAQ at https://www.contributor-covenant.org/faq. Translations are available at https://www.contributor-covenant.org/translations.
+For answers to common questions about this code of conduct, see the FAQ at <https://www.contributor-covenant.org/faq>.
+ Translations are available at <https://www.contributor-covenant.org/translations>.
 
 ---
 
-**Thank you for helping make BrewSource MCP Server a welcoming, inclusive community for all brewing and technology enthusiasts!** 🍺
+**Thank you for helping make BrewSource MCP Server a welcoming, inclusive community for all brewing and technology enthusiasts!**
 
 *Last updated: July 5, 2025*

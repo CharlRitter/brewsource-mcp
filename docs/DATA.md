@@ -1,6 +1,8 @@
 # BrewSource MCP Server Data Guide
 
-This document provides a comprehensive overview of the data storage, format, validation, and seeding strategies used in the BrewSource MCP Server. It covers the hybrid storage model, BJCP JSON schema, validation workflow, and automatic database seeding for development and testing.
+This document provides a comprehensive overview of the data storage, format, validation, and seeding strategies used in
+ the BrewSource MCP Server. It covers the hybrid storage model, BJCP JSON schema, validation workflow, and automatic database
+ seeding for development and testing.
 
 ---
 
@@ -44,7 +46,8 @@ This document provides a comprehensive overview of the data storage, format, val
 
 ### Overview
 
-The BrewSource MCP Server uses a hybrid data storage approach designed for both performance and maintainability. This approach leverages:
+The BrewSource MCP Server uses a hybrid data storage approach designed for both performance and maintainability. This
+ approach leverages:
 
 - **JSON files for BJCP style guidelines** (static, reference data)
 - **PostgreSQL database for beer and brewery data** (dynamic, relational data)
@@ -56,6 +59,7 @@ This section describes the rationale, structure, and benefits of this approach.
 ### Why Hybrid Storage?
 
 #### JSON for BJCP Styles
+
 - **Static Reference**: BJCP styles are official guidelines that rarely change.
 - **No Relationships**: Each style is self-contained.
 - **Version Control**: JSON files are tracked in Git, making changes auditable and reviewable.
@@ -64,6 +68,7 @@ This section describes the rationale, structure, and benefits of this approach.
 - **Simple Updates**: Update the JSON, commit, and deploy.
 
 #### PostgreSQL for Beer & Brewery Data
+
 - **Relational Data**: Beers belong to breweries; supports complex relationships.
 - **Advanced Queries**: Enables search by location, style, and other criteria.
 - **Geographic & Full-Text Search**: Supports distance-based and text-based queries.
@@ -76,11 +81,13 @@ This section describes the rationale, structure, and benefits of this approach.
 ### Implementation Details
 
 #### BJCP Styles (JSON)
-- Stored as JSON files in `app/data/` (e.g., `bjcp_styles.json`, `bjcp_categories.json`).
-- Loaded at startup and served via a dedicated Go service (`pkg/data/bjcp.go`).
+
+- Stored as JSON files in `app/data/` (e.g., `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`).
+- Loaded at startup and served via a dedicated Go service (`app/pkg/data/bjcp.go`).
 - Lookups and searches are performed in-memory for maximum speed.
 
 **Example Usage:**
+
 ```go
 // Lookup by style code
 style := bjcpService.GetStyleByCode("21A")
@@ -91,11 +98,13 @@ styles := bjcpService.GetStylesByCategory("IPA")
 ```
 
 #### Beer & Brewery Data (PostgreSQL)
+
 - Managed in a relational database with proper indexing and constraints.
-- Accessed via Go services in `internal/services/` (e.g., `beer.go`, `brewery.go`).
+- Accessed via Go services in `app/internal/services/` (e.g., `beers.go`, `breweries.go`).
 - Supports complex queries, joins, and full-text search.
 
 **Example Query:**
+
 ```sql
 SELECT b.name, br.name, br.city
 FROM beers b
@@ -106,18 +115,20 @@ WHERE b.style LIKE '%IPA%' AND br.state = 'CA';
 ---
 
 ### File Structure
-```
+
+```sh
 app/
 ├── data/
-│   ├── bjcp_styles.json      # Static reference data
-│   └── bjcp_categories.json  # Category metadata
+│   ├── bjcp_2021_beer.json     # Beer style data
+│   ├── bjcp_2015_mead.json     # Mead style data
+│   └── bjcp_2025_cider.json    # Cider style data
 ├── pkg/
 │   └── data/
-│       └── bjcp.go           # JSON-based BJCP service
+│       └── bjcp.go             # JSON-based BJCP service
 └── internal/
     └── services/
-        ├── beer.go           # Database-backed services
-        └── brewery.go
+        ├── beers.go            # Database-backed services
+        └── breweries.go
 ```
 
 ---
@@ -125,6 +136,7 @@ app/
 ### Benefits of This Approach
 
 #### For BJCP Styles (JSON)
+
 - **Fast lookups**: In-memory, no DB round-trips
 - **Easy updates**: Edit JSON, commit, deploy
 - **Portable**: No DB required for style lookups
@@ -132,6 +144,7 @@ app/
 - **Versioned**: All changes tracked in Git
 
 #### For Beer/Brewery Data (Database)
+
 - **Data integrity**: Foreign keys, transactions
 - **Scalable**: Handles large, growing datasets
 - **Flexible queries**: Full-text, geo, and relational search
@@ -142,11 +155,11 @@ app/
 
 ### Migration & Future Work
 
-
-- BJCP data has been migrated to multiple JSON files (`bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`, `bjcp_2015_special_ingredients.json`) and is no longer stored in the database.
-- Handlers and services have been updated to use the JSON-based BJCP service, with plans for a unified datastore service to manage all style types in future phases.
+- BJCP data has been migrated to multiple JSON files (`bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`)
+ and is no longer stored in the database.
+- Handlers and services have been updated to use the JSON-based BJCP service.
 - The database remains the source of truth for beer and brewery data, with ongoing optimization for search and indexing.
-<!-- - Makefile targets support JSON validation (`validate-bjcp`). Database seeding is handled automatically during server startup. -->
+- Database seeding is handled automatically during server startup via the models in `app/internal/models/seed.go`.
 
 ---
 
@@ -164,16 +177,20 @@ This approach ensures high performance, easy maintenance, and a great developer 
 ## BJCP JSON Format
 
 ### File Location
+
 - All BJCP JSON files are stored in `app/data/`.
-- Example files: `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`, etc.
+- Current files: `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`
 
 ### Top-Level Structure
+
 Each file contains a top-level object with:
+
 - `styles`: a dictionary of style objects, keyed by style code (e.g., "21A").
 - `categories`: an array of category names.
 - `metadata`: an object with versioning info.
 
 Example:
+
 ```json
 {
   "styles": {
@@ -191,7 +208,9 @@ Example:
 ```
 
 ### Style Object Schema
+
 Each style entry should include:
+
 - `code` (string): Style code (e.g., "21A")
 - `name` (string): Style name
 - `category` (string): Category name
@@ -206,13 +225,14 @@ Each style entry should include:
 - `style_comparison` (string)
 - `commercial_examples` (array of strings)
 - `vitals` (object):
-    - `abv_min`, `abv_max` (float)
-    - `ibu_min`, `ibu_max` (int)
-    - `srm_min`, `srm_max` (float)
-    - `og_min`, `og_max` (float)
-    - `fg_min`, `fg_max` (float)
+  - `abv_min`, `abv_max` (float)
+  - `ibu_min`, `ibu_max` (int)
+  - `srm_min`, `srm_max` (float)
+  - `og_min`, `og_max` (float)
+  - `fg_min`, `fg_max` (float)
 
 Example style:
+
 ```json
 {
   "code": "21A",
@@ -244,18 +264,21 @@ Example style:
 ```
 
 ### Validation
-- Use `scripts/create_formatted_bjcp.py` to validate and format mead/cider files.
-- Ensure all required fields are present and types are correct.
-- For beer styles, use a similar schema and validation logic.
+
+- JSON files should follow the schema outlined above
+- Ensure all required fields are present and types are correct
+- For beer styles, use a similar schema and validation logic
 
 ### Contribution Guidelines
-- Add new styles by editing the appropriate JSON file in `app/data/`.
-- Run the validation script before committing changes.
-- Update `metadata.last_updated` and `metadata.total_styles` as needed.
+
+- Add new styles by editing the appropriate JSON file in `app/data/`
+- Validate JSON syntax before committing changes
+- Update `metadata.last_updated` and `metadata.total_styles` as needed
 
 ---
 
 ### What It Checks
+
 - Required fields for each style
 - Correct data types (string, float, int, array)
 - Value ranges for vitals (ABV, IBU, SRM, OG, FG)
@@ -263,12 +286,14 @@ Example style:
 - Valid JSON format
 
 ### How to Add New Styles
+
 - Edit the appropriate JSON file in `app/data/`
-<!-- - Run `make validate-bjcp` to check your changes -->
+- Validate JSON syntax before committing
 - Fix any errors before committing
 
 ### Troubleshooting
-- If validation fails, the script will print errors and line numbers
+
+- If JSON is invalid, most editors will highlight syntax errors
 - See [BJCP JSON Format](#bjcp-json-format) for schema details
 
 ---
@@ -276,19 +301,28 @@ Example style:
 ## Database Seeding
 
 ### What is Seed Data?
-Seed data is a set of sample breweries and beers that are inserted into the database to provide a working dataset for development, testing, and demonstration purposes. The seeding process is idempotent: it will not insert duplicate data if the tables are already populated.
+
+Seed data is a set of sample breweries and beers that are inserted into the database to provide a working dataset for
+ development, testing, and demonstration purposes. The seeding process is idempotent: it will not insert duplicate data
+ if the tables are already populated.
 
 ### When is Seeding Performed?
-Seeding is performed automatically during server startup. If the database is empty, initial data will be inserted. The process is idempotent and will not duplicate data.
+
+Seeding is performed automatically during server startup. If the database is empty, initial data will be inserted. The
+ process is idempotent and will not duplicate data.
 
 ### How Seeding Works
-Seeding is invoked automatically by the server on startup. No manual action is required. For advanced scenarios, you may call the seeding logic programmatically in Go, but this is not needed for normal development.
+
+Seeding is invoked automatically by the server on startup. No manual action is required. For advanced scenarios, you may
+ call the seeding logic programmatically in Go, but this is not needed for normal development.
 
 ### What Gets Seeded?
+
 - **Breweries:** A set of well-known US breweries with full address and contact info.
 - **Beers:** Popular beers from those breweries, with style, ABV, IBU, SRM, and descriptions.
 
 ### Notes
+
 - The seeder checks for existing data and skips seeding if breweries or beers already exist.
 - All seed data is for development and demonstration only.
 - For production, use real data import workflows.

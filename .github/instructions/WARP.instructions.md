@@ -49,7 +49,6 @@ make format
 ### Database Operations
 ```bash
 # The database is automatically migrated and seeded during startup
-# Manual seeding (if needed): make seed-data
 
 # Connect to database
 psql-dev  # (alias set in .envrc)

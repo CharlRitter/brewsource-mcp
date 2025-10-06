@@ -4,13 +4,16 @@ kind: Kustomization
 metadata:
   name: brewsource-mcp
 
-namespace: default
+namespace: brewsource-prod
 
 resources:
   - ../base
-  - postgres-sealedsecret.yaml
-  - letsencrypt-clusterissuer.yaml
+  - brewsource-tls-certificate.yaml
   - ingress.yaml
+  - letsencrypt-clusterissuer.yaml
+  - namespace.yaml
+  - network-policies.yaml
+  - postgres-sealedsecret.yaml
 
 labels:
   - pairs:
@@ -23,5 +26,3 @@ patches:
 configMapGenerator:
   - name: brewsource-config
     behavior: merge
-    literals:
-      - DATABASE_URL=postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/brewsource_prod?sslmode=disable

@@ -27,6 +27,8 @@ spec:
       labels:
         app: brewsource-mcp
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: brewsource-mcp
         securityContext:
