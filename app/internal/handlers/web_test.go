@@ -12,7 +12,6 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
 )
 
-// Test NewWebHandlers function.
 func TestNewWebHandlers(t *testing.T) {
 	webHandlers := handlers.NewWebHandlers()
 	if webHandlers == nil {
@@ -479,5 +478,29 @@ func TestServeHealth_JSONResponse(t *testing.T) {
 	// Verify it's valid JSON structure
 	if !strings.HasPrefix(body, "{") || !strings.HasSuffix(strings.TrimSpace(body), "}") {
 		t.Error("Response should be valid JSON object")
+	}
+}
+
+// Test ServeFavicon handler.
+func TestServeFavicon(t *testing.T) {
+	webHandlers := handlers.NewWebHandlers()
+
+	req := httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+	recorder := httptest.NewRecorder()
+
+	webHandlers.ServeFavicon(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	contentType := recorder.Header().Get("Content-Type")
+	if contentType != "image/x-icon" {
+		t.Errorf("Expected Content-Type 'image/x-icon', got '%s'", contentType)
+	}
+
+	// The favicon should not be empty
+	if recorder.Body.Len() == 0 {
+		t.Error("Favicon response body should not be empty")
 	}
 }

@@ -1,0 +1,148 @@
+# This playbook automates the deployment of the BrewSource MCP application
+# to a fresh Ubuntu server on Oracle Cloud Infrastructure (OCI).
+
+# IMPORTANT PRE-REQUISITE:
+# Before running this playbook, you must configure the firewall for your OCI instance
+# in the cloud console. Open the following ports in your VCN's Security List:
+# - TCP 22 (SSH)
+# - TCP 80 (HTTP for Let's Encrypt)
+# - TCP 443 (HTTPS for the application)
+# - TCP 6443 (Kubernetes API)
+
+# Play 1: Provision the K3s server on the remote node
+- name: Configure K3s Server
+  hosts: k3s_server
+  become: true
+  tasks:
+    - name: Download K3s installation script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/install_k3s.sh
+        mode: '0755'
+
+    - name: Run K3s installation script (disabling default Traefik)
+      ansible.builtin.command: /tmp/install_k3s.sh
+      args:
+        creates: /usr/local/bin/k3s
+      environment:
+        # This is the correct way to pass arguments to the install script.
+        # We disable the default traefik because we will install our own with specific settings.
+        INSTALL_K3S_EXEC: --disable=traefik
+
+    - name: Wait for K3s API server to be ready
+      ansible.builtin.wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+
+    - name: Fetch the Kubeconfig file from the server
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ playbook_dir }}/k3s_config"
+        flat: yes
+
+# Play 2: Deploy applications and cluster services FROM LOCAL MACHINE
+- name: Deploy Kubernetes Manifests
+  hosts: localhost
+  connection: local
+  vars:
+    # This should be the public IP of your k3s_server host
+    k3s_server_ip: "{{ hostvars[groups['k3s_server'][0]]['ansible_host'] }}"
+
+  pre_tasks:
+    - name: Clone application repository for local Kustomize build
+      ansible.builtin.git:
+        repo: 'https://github.com/CharlRitter/brewsource-mcp.git'
+        dest: "{{ playbook_dir }}/brewsource-mcp"
+        version: main # Or your desired branch/tag
+
+    - name: Update the fetched kubeconfig to be accessible from local machine
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/k3s_config"
+        regexp: '127\.0\.0\.1'
+        replace: "{{ k3s_server_ip }}"
+
+    - name: MANUAL STEP REQUIRED - Create Sealed Secret
+      ansible.builtin.pause:
+        prompt: |
+          The cluster is now running. Before proceeding, you MUST manually create the 'postgres-sealedsecret.yaml'.
+          Open a NEW terminal and run the following commands:
+
+          1. Create a temporary plain-text secret file (use a URL-safe password!):
+          cat <<EOF > /tmp/temp-postgres-secret.yaml
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: postgres-secret
+            namespace: brewsource-prod
+          stringData:
+            POSTGRES_USER: "brewsource_user"
+            POSTGRES_PASSWORD: "averylongsafepassword123"
+          EOF
+
+          2. Use kubeseal to encrypt the file (this command uses your newly configured k3s_config):
+          kubeseal --kubeconfig {{ playbook_dir }}/k3s_config --controller-namespace kube-system --controller-name sealed-secrets < /tmp/temp-postgres-secret.yaml > {{ playbook_dir }}/brewsource-mcp/k8s/prod/postgres-sealedsecret.yaml
+
+          3. Clean up the temporary file:
+          rm /tmp/temp-postgres-secret.yaml
+
+          Press ENTER to continue the playbook once the sealed secret file has been created.
+
+  tasks:
+    - name: Set Kubeconfig fact for all subsequent k8s tasks
+      ansible.builtin.set_fact:
+        k8s_auth_kubeconfig: "{{ playbook_dir }}/k3s_config"
+
+    - name: Add Traefik Helm repo
+      kubernetes.core.helm_repository:
+        name: traefik
+        repo_url: https://helm.traefik.io/traefik
+
+    - name: Install or Upgrade Traefik via Helm
+      kubernetes.core.helm:
+        name: traefik
+        chart_ref: traefik/traefik
+        release_namespace: default
+        state: present
+        values:
+          additionalArguments:
+            - "--providers.kubernetesingress.ingressclass=traefik"
+          ports:
+            websecure:
+              tls:
+                enabled: true
+
+    - name: Add Jetstack Helm repo
+      kubernetes.core.helm_repository:
+        name: jetstack
+        repo_url: https://charts.jetstack.io
+
+    - name: Install or Upgrade cert-manager via Helm
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: cert-manager
+        create_namespace: true
+        state: present
+        values:
+          installCRDs: true # Let the chart handle CRD installation
+
+    - name: Add Sealed Secrets Helm repo
+      kubernetes.core.helm_repository:
+        name: sealed-secrets
+        repo_url: https://bitnami-labs.github.io/sealed-secrets
+
+    - name: Install or Upgrade Sealed Secrets Controller
+      kubernetes.core.helm:
+        name: sealed-secrets
+        chart_ref: sealed-secrets/sealed-secrets
+        release_namespace: kube-system
+        state: present
+
+    - name: Wait for controller pods to be ready before applying app
+      ansible.builtin.pause:
+        seconds: 60
+        prompt: "Waiting 60 seconds for all controllers (Traefik, Cert-Manager, Sealed Secrets) to initialize..."
+
+    - name: Deploy Brewsource MCP application using local Kustomize directory
+      kubernetes.core.k8s:
+        state: present
+        kustomization: "{{ playbook_dir }}/brewsource-mcp/k8s/prod"

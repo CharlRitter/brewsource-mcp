@@ -4,27 +4,25 @@ Welcome to the BrewSource MCP Server documentation. This directory contains comp
 
 ## 📁 Documentation Structure
 
-
-### `/project/` - Project Information
-- **[PROJECT_OVERVIEW.md](project/PROJECT_OVERVIEW.md)** - High-level project overview, vision, goals, and technical architecture
-
-### `/testing/` - Quality Assurance
-- **[TESTING.md](testing/TESTING.md)** - Unified test plan and user stories for all Phase 1 functionality
-
-### `/data/` - Data Storage & Formats
-- **[DATA.md](data/DATA.md)** - Data storage approach, BJCP JSON format, validation, and seeding
+### Core Documentation Files
+- **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)** - High-level project overview, vision, goals, and technical architecture
+- **[DATA.md](DATA.md)** - Data storage approach, BJCP JSON format, validation, and seeding
+- **[TESTING.md](TESTING.md)** - Unified test plan and user stories for all Phase 1 functionality
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Docker and Kubernetes deployment instructions
 
 ## 🚀 Quick Start
 
-1. **Understanding the Project**: Start with [PROJECT_OVERVIEW.md](project/PROJECT_OVERVIEW.md) for the big picture
-2. **Data & Storage**: See [DATA.md](data/DATA.md) for storage approach, formats, and validation
-3. **Testing & QA**: Review [TESTING.md](testing/TESTING.md) for test plan, user stories, and quality criteria
+1. **Understanding the Project**: Start with [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) for the big picture
+2. **Data & Storage**: See [DATA.md](DATA.md) for storage approach, formats, and validation
+3. **Testing & QA**: Review [TESTING.md](TESTING.md) for test plan, user stories, and quality criteria
+4. **Deployment**: Check [DEPLOYMENT.md](DEPLOYMENT.md) for deployment options and setup
 
 ## 📋 Phase 1 MVP Documentation Status
 
 - ✅ **Project Overview**: Complete high-level project documentation
 - ✅ **Data & Storage**: Hybrid storage, JSON schema, validation, and seeding docs
 - ✅ **Testing & QA**: Unified test plan and user stories for all Phase 1 features
+- ✅ **Deployment**: Docker and Kubernetes deployment instructions
 - 🔄 **API Documentation**: See main [README.md](../README.md) for current API docs
 - 🔄 **Developer Guide**: See main [README.md](../README.md) for development setup
 
@@ -66,6 +64,6 @@ When updating documentation:
 
 ---
 
-**Last Updated**: July 24, 2025
+**Last Updated**: October 5, 2025
 **Documentation Version**: Phase 1 MVP
 **Project Status**: Active Development

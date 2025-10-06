@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Build the binary for Linux
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/brewsource-mcp ./app/cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/brewsource-mcp ./app/cmd/server/main.go
 RUN chmod +x /app/brewsource-mcp
 
 # Runtime stage
