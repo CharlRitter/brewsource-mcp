@@ -1,6 +1,7 @@
 # Contributing to BrewSource MCP Server 🍺
 
-Thank you for your interest in contributing to BrewSource MCP Server! This project aims to provide comprehensive brewing knowledge through the Model Context Protocol, and we welcome contributions from developers, brewers, and beer enthusiasts.
+Thank you for your interest in contributing to BrewSource MCP Server! This project aims to provide comprehensive brewing
+ knowledge through the Model Context Protocol, and we welcome contributions from developers, brewers, and beer enthusiasts.
 
 ## Table of Contents
 
@@ -16,7 +17,8 @@ Thank you for your interest in contributing to BrewSource MCP Server! This proje
 
 ### What We're Building
 
-BrewSource MCP Server is an open-source project that provides AI assistants with access to brewing knowledge through the Model Context Protocol. We're currently in **Phase 1 MVP** focusing on:
+BrewSource MCP Server is an open-source project that provides AI assistants with access to brewing knowledge through the
+ Model Context Protocol. We're currently in **Phase 1 MVP** focusing on:
 
 - BJCP style guide integration
 - Beer and brewery search capabilities
@@ -49,34 +51,39 @@ Our development environment uses modern Kubernetes-native tools with automatic d
 ### Kubernetes-Native Development
 
 1. **Fork and Clone**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/brewsource-mcp.git
    cd brewsource-mcp
    ```
 
 2. **Start Development Environment**
+
    ```bash
    # All tools are automatically installed via Nix/direnv
    make up
    ```
 
 3. **Access Development Services**
-   - **Tilt Dashboard**: http://localhost:10350
-   - **MCP Server**: http://localhost:8080
+   - **Tilt Dashboard**: <http://localhost:10350>
+   - **MCP Server**: <http://localhost:8080>
    - **PostgreSQL**: localhost:5432
    - **Redis**: localhost:6379
 
 4. **Interactive Cluster Management**
+
    ```bash
    make k9s
    ```
 
 5. **Run Tests**
+
    ```bash
    make test
    ```
 
 6. **Stop Development Environment**
+
    ```bash
    make down
    ```
@@ -93,24 +100,24 @@ If you prefer not to use Nix/direnv:
 
 ### Project Structure
 
-```
+```sh
 brewsource-mcp/
 ├── app/                 # Application code
 │   ├── cmd/server/      # Application entry point
 │   ├── internal/        # Private application code
-│   │   ├── mcp/        # MCP protocol implementation
-│   │   ├── handlers/   # Tool and resource handlers
-│   │   ├── models/     # Database models
-│   │   └── services/   # Business logic
-│   ├── pkg/            # Public library code
-│   │   ├── bjcp/       # BJCP utilities
-│   │   └── brewing/    # Brewing calculations
-│   └── Dockerfile      # Container build
-├── k8s/                # Kubernetes manifests
-├── docs/               # Documentation
-├── .github/            # GitHub templates and workflows
-├── Tiltfile            # Tilt configuration
-└── shell.nix           # Nix development environment
+│   │   ├── mcp/         # MCP protocol implementation
+│   │   ├── handlers/    # Tool and resource handlers
+│   │   ├── models/      # Database models
+│   │   └── services/    # Business logic
+│   ├── pkg/             # Public library code
+│   │   ├── bjcp/        # BJCP utilities
+│   │   └── brewing/     # Brewing calculations
+│   └── Dockerfile       # Container build
+├── k8s/                 # Kubernetes manifests
+├── docs/                # Documentation
+├── .github/             # GitHub templates and workflows
+├── Tiltfile             # Tilt configuration
+└── shell.nix            # Nix development environment
 ```
 
 ## How to Contribute
@@ -125,6 +132,7 @@ brewsource-mcp/
 ### 2. Create an Issue (Optional but Recommended)
 
 Before starting work, consider creating an issue to:
+
 - Discuss your approach
 - Get feedback from maintainers
 - Avoid duplicate work
@@ -133,6 +141,7 @@ Before starting work, consider creating an issue to:
 ### 3. Development Workflow
 
 1. **Create a Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
@@ -145,6 +154,7 @@ Before starting work, consider creating an issue to:
    - Update documentation as needed
 
 3. **Test Your Changes**
+
    ```bash
    # Run unit tests
    go test ./...
@@ -157,12 +167,14 @@ Before starting work, consider creating an issue to:
    ```
 
 4. **Commit Your Changes**
+
    ```bash
    git add .
    git commit -m "feat: add hop substitution tool"
    ```
 
 5. **Push and Create Pull Request**
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -380,6 +392,7 @@ refactor: improve error handling in MCP handlers
 ### Recognition
 
 Contributors are recognized in:
+
 - Release notes for significant contributions
 - README acknowledgments
 - GitHub contributor graphs
@@ -389,6 +402,7 @@ Contributors are recognized in:
 ### Phase 1 (Current) - MVP Contributions
 
 Priority areas for contributions:
+
 - **BJCP Integration** - Improve style data accuracy
 - **MCP Tools** - Enhance existing tools (`bjcp_lookup`, `search_beers`, `find_breweries`)
 - **Testing** - Add comprehensive test coverage

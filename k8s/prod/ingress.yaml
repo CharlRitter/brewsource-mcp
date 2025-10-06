@@ -1,16 +1,13 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: brewsource-mcp-ingress
+  name: brewsource-mcp-ingress-http
+  namespace: brewsource-prod
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    traefik.ingress.kubernetes.io/redirect-entry-point: https
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: brewsource-prod-brewsource-redirect-https@kubernetescrd
 spec:
   ingressClassName: traefik
-  tls:
-  - hosts:
-    - brewsource.charlritter.com
-    secretName: brewsource-tls-secret
   rules:
   - host: "brewsource.charlritter.com"
     http:
@@ -22,14 +19,37 @@ spec:
             name: brewsource-mcp
             port:
               number: 8080
-      - path: /health
-        pathType: Prefix
-        backend:
-          service:
-            name: brewsource-mcp
-            port:
-              number: 8080
-      - path: /api
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: brewsource-redirect-https
+  namespace: brewsource-prod
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: brewsource-mcp-ingress-https
+  namespace: brewsource-prod
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - brewsource.charlritter.com
+    secretName: brewsource-tls-secret
+  rules:
+  - host: "brewsource.charlritter.com"
+    http:
+      paths:
+      - path: /
         pathType: Prefix
         backend:
           service:
