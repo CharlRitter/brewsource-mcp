@@ -76,8 +76,8 @@ This section describes the rationale, structure, and benefits of this approach.
 ### Implementation Details
 
 #### BJCP Styles (JSON)
-- Stored as JSON files in `app/data/` (e.g., `bjcp_styles.json`, `bjcp_categories.json`).
-- Loaded at startup and served via a dedicated Go service (`pkg/data/bjcp.go`).
+- Stored as JSON files in `app/data/` (e.g., `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`).
+- Loaded at startup and served via a dedicated Go service (`app/pkg/data/bjcp.go`).
 - Lookups and searches are performed in-memory for maximum speed.
 
 **Example Usage:**
@@ -92,7 +92,7 @@ styles := bjcpService.GetStylesByCategory("IPA")
 
 #### Beer & Brewery Data (PostgreSQL)
 - Managed in a relational database with proper indexing and constraints.
-- Accessed via Go services in `internal/services/` (e.g., `beer.go`, `brewery.go`).
+- Accessed via Go services in `app/internal/services/` (e.g., `beers.go`, `breweries.go`).
 - Supports complex queries, joins, and full-text search.
 
 **Example Query:**
@@ -109,15 +109,16 @@ WHERE b.style LIKE '%IPA%' AND br.state = 'CA';
 ```
 app/
 ├── data/
-│   ├── bjcp_styles.json      # Static reference data
-│   └── bjcp_categories.json  # Category metadata
+│   ├── bjcp_2021_beer.json     # Beer style data
+│   ├── bjcp_2015_mead.json     # Mead style data
+│   └── bjcp_2025_cider.json    # Cider style data
 ├── pkg/
 │   └── data/
-│       └── bjcp.go           # JSON-based BJCP service
+│       └── bjcp.go             # JSON-based BJCP service
 └── internal/
     └── services/
-        ├── beer.go           # Database-backed services
-        └── brewery.go
+        ├── beers.go            # Database-backed services
+        └── breweries.go
 ```
 
 ---
@@ -142,11 +143,10 @@ app/
 
 ### Migration & Future Work
 
-
-- BJCP data has been migrated to multiple JSON files (`bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`, `bjcp_2015_special_ingredients.json`) and is no longer stored in the database.
-- Handlers and services have been updated to use the JSON-based BJCP service, with plans for a unified datastore service to manage all style types in future phases.
+- BJCP data has been migrated to multiple JSON files (`bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`) and is no longer stored in the database.
+- Handlers and services have been updated to use the JSON-based BJCP service.
 - The database remains the source of truth for beer and brewery data, with ongoing optimization for search and indexing.
-<!-- - Makefile targets support JSON validation (`validate-bjcp`). Database seeding is handled automatically during server startup. -->
+- Database seeding is handled automatically during server startup via the models in `app/internal/models/seed.go`.
 
 ---
 
@@ -165,7 +165,7 @@ This approach ensures high performance, easy maintenance, and a great developer 
 
 ### File Location
 - All BJCP JSON files are stored in `app/data/`.
-- Example files: `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`, etc.
+- Current files: `bjcp_2021_beer.json`, `bjcp_2015_mead.json`, `bjcp_2025_cider.json`
 
 ### Top-Level Structure
 Each file contains a top-level object with:
@@ -244,14 +244,14 @@ Example style:
 ```
 
 ### Validation
-- Use `scripts/create_formatted_bjcp.py` to validate and format mead/cider files.
-- Ensure all required fields are present and types are correct.
-- For beer styles, use a similar schema and validation logic.
+- JSON files should follow the schema outlined above
+- Ensure all required fields are present and types are correct
+- For beer styles, use a similar schema and validation logic
 
 ### Contribution Guidelines
-- Add new styles by editing the appropriate JSON file in `app/data/`.
-- Run the validation script before committing changes.
-- Update `metadata.last_updated` and `metadata.total_styles` as needed.
+- Add new styles by editing the appropriate JSON file in `app/data/`
+- Validate JSON syntax before committing changes
+- Update `metadata.last_updated` and `metadata.total_styles` as needed
 
 ---
 
@@ -264,11 +264,11 @@ Example style:
 
 ### How to Add New Styles
 - Edit the appropriate JSON file in `app/data/`
-<!-- - Run `make validate-bjcp` to check your changes -->
+- Validate JSON syntax before committing
 - Fix any errors before committing
 
 ### Troubleshooting
-- If validation fails, the script will print errors and line numbers
+- If JSON is invalid, most editors will highlight syntax errors
 - See [BJCP JSON Format](#bjcp-json-format) for schema details
 
 ---

@@ -82,6 +82,21 @@ func (w *WebHandlers) ServeHome(writer http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ServeFavicon serves the favicon.ico file from the embedded templates directory.
+func (w *WebHandlers) ServeFavicon(writer http.ResponseWriter, r *http.Request) {
+	f, err := templateFS.Open("templates/favicon.ico")
+	if err != nil {
+		http.NotFound(writer, r)
+		return
+	}
+	defer f.Close()
+	writer.Header().Set("Content-Type", "image/x-icon")
+	if _, copyErr := io.Copy(writer, f); copyErr != nil {
+		http.Error(writer, "Failed to serve favicon", http.StatusInternalServerError)
+		return
+	}
+}
+
 // updateReadmeLinks updates relative links to absolute GitHub URLs and sets target="_blank" for all links.
 func updateReadmeLinks(html string) string {
 	repoURL := "https://github.com/CharlRitter/brewsource-mcp/tree/main"

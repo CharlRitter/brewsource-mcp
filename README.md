@@ -1,4 +1,4 @@
-# [BrewSource MCP Server 🍺](https://github.com/CharlRitter/brewsource-mcp)
+# [BrewSource MCP Server](https://github.com/CharlRitter/brewsource-mcp) 🍺
 
 A comprehensive Model Context Protocol (MCP) server for brewing resources, built with Go.
 
@@ -48,33 +48,35 @@ BrewSource MCP uses a hybrid data storage strategy:
 
 ```
 brewsource-mcp/
-├── cmd/server/           # Main application entry point
+├── app/                 # Application code
+│   ├── cmd/server/      # Main application entry point
+│   ├── data/            # BJCP style data (JSON files)
+│   ├── internal/        # Internal application code
+│   │   ├── handlers/    # HTTP and MCP handlers
+│   │   ├── mcp/         # MCP protocol implementation
+│   │   ├── models/      # Database models and seed data
+│   │   └── services/    # Business logic services
+│   └── pkg/data/        # BJCP data utilities
+├── bridge/              # Node.js bridge for MCP integration
 ├── docs/                # Project documentation
-│   ├── project/         # Project overview and architecture
-│   └── testing/         # Test plans and user stories
-├── internal/
-│   ├── mcp/             # MCP protocol implementation
-│   ├── handlers/        # Tool and resource handlers
-│   ├── models/          # Database models
-│   └── services/        # Business logic services
-├── pkg/
-│   ├── bjcp/           # BJCP style guide utilities
-│   └── brewing/        # Brewing calculations and formulas
-├── go.mod              # Go module definition
-├── .envrc              # Development environment configuration
-└── README.md           # This file
+├── k8s/                 # Kubernetes manifests
+├── .github/             # GitHub workflow and templates
+├── go.mod               # Go module definition
+├── Makefile             # Build and development commands
+├── Tiltfile             # Tilt development configuration
+└── README.md            # This file
 ```
+
 
 ## 📚 Documentation
 
+For comprehensive project documentation, see the **[docs/](docs/)** directory and the Kubernetes deployment guide:
 
-For comprehensive project documentation, see the **[docs/](docs/)** directory:
-
-- **[Seeding Guide](docs/SEEDING.md)** - How to populate the database with sample breweries and beers
-
-- **[Project Overview](docs/project/PROJECT_OVERVIEW.md)** - Vision, goals, and technical architecture
-- **[User Stories](docs/testing/USER_STORIES.md)** - Detailed feature specifications in Gherkin syntax
-- **[Test Plan](docs/testing/TEST_PLAN.md)** - Comprehensive testing strategy and requirements
+- **[Data Storage Guide](docs/DATA.md)** – Data storage approach, BJCP JSON format, validation, and seeding
+- **[Deployment Guide](docs/DEPLOYMENT.md)** – Docker and basic Kubernetes deployment instructions
+- **[Kubernetes Production Deployment (k8s/README.md)](k8s/README.md)** – Step-by-step guide for secure, production-ready deployment on Oracle Cloud with K3s, Traefik, and Cert-Manager
+- **[Testing Guide](docs/TESTING.md)** – Comprehensive testing strategy and user stories
+- **[Project Overview](docs/PROJECT_OVERVIEW.md)** – Vision, goals, and technical architecture
 
 ## Quick Start
 
@@ -112,9 +114,6 @@ nix-shell  # Everything is included
 ```bash
 # Start everything
 make up
-
-# Seed the database with sample data (breweries and beers)
-make seed-data
 
 # Explore cluster
 make k9s
@@ -194,12 +193,9 @@ psql -c "CREATE DATABASE brewsource;"
 make build
 
 # Run development environment (Kubernetes + Tilt)
+# Access the Tilt dashboard at http://localhost:10350
 make up
 
-# (Optional) Seed the database with sample data
-make seed-data
-
-# Access the Tilt dashboard at http://localhost:10350
 # Use k9s for interactive cluster management
 make k9s
 ```
@@ -226,7 +222,7 @@ make test
 
 ### Adding New Tools
 
-1. **Define the tool function** in `internal/handlers/tools.go`:
+1. **Define the tool function** in `app/internal/handlers/tools.go`:
 ```go
 func (h *ToolHandlers) MyNewTool(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
     // Your tool implementation
@@ -244,11 +240,11 @@ func (h *ToolHandlers) MyNewTool(ctx context.Context, args map[string]interface{
 server.RegisterToolHandler("my_new_tool", h.MyNewTool)
 ```
 
-3. **Add tool definition** in `getToolDefinition()` method in `internal/mcp/server.go`
+3. **Add tool definition** in `getToolDefinition()` method in `app/internal/mcp/server.go`
 
 ### Adding New Resources
 
-1. **Create resource handler** in `internal/handlers/resources.go`:
+1. **Create resource handler** in `app/internal/handlers/resources.go`:
 ```go
 func (h *ResourceHandlers) HandleMyResource(ctx context.Context, uri string) (*mcp.ResourceContent, error) {
     // Your resource implementation
@@ -265,32 +261,9 @@ func (h *ResourceHandlers) HandleMyResource(ctx context.Context, uri string) (*m
 server.RegisterResourceHandler("my://resource/*", h.HandleMyResource)
 ```
 
-### Brewing Calculations
-
-The `pkg/brewing` package contains all brewing formulas and calculations:
-
-```go
-// Calculate IBU from hop schedule
-hopSchedule := brewing.HopSchedule{
-    Additions: []brewing.HopAddition{
-        {Name: "cascade", Amount: 1.0, Time: 60, AlphaAcid: 5.5},
-    },
-}
-ibu := hopSchedule.CalculateIBU(5.0, 1.050) // 5 gallon batch
-
-// Calculate beer color (SRM)
-grainBill := brewing.GrainBill{
-    Grains: []brewing.GrainEntry{
-        {Name: "2-row", Amount: 8.0},
-        {Name: "crystal_60", Amount: 1.0},
-    },
-}
-srm := grainBill.CalculateSRM(5.0) // 5 gallon batch
-```
-
 ### BJCP Style Guide
 
-The `pkg/bjcp` package manages beer style data:
+The `app/pkg/data` package manages beer style data:
 
 ```go
 // Load and search styles
@@ -403,8 +376,8 @@ make build
 ### Getting Help
 
 - Check the **[docs/](docs/)** directory for detailed documentation
-- Review **[User Stories](docs/testing/USER_STORIES.md)** for feature specifications
-- See **[Test Plan](docs/testing/TEST_PLAN.md)** for testing requirements
+- Review **[Testing Guide](docs/TESTING.md)** for user stories and test specifications
+- See **[Deployment Guide](docs/DEPLOYMENT.md)** for deployment requirements
 - Open an issue using our **[GitHub templates](.github/ISSUE_TEMPLATE/)**
 
 ## Contributing
@@ -423,7 +396,7 @@ The core datasets for beers and breweries are defined as Go source files:
 
 - [Beers dataset (`SeedBeer`)](app/internal/services/beer_schema.go)
 - [Breweries dataset (`Brewery`)](app/internal/services/brewery_schema.go)
-- [BJCP styles (beer, mead, cider, special ingredients) JSON](app/data/)
+- [BJCP styles (beer, mead, cider) JSON](app/data/)
 
 To expand the beer or brewery data (add new entries or fix errors), edit the relevant Go file and open a Pull Request with your changes. For BJCP style data, update the appropriate JSON file in `app/data/` and submit a PR. Please ensure your changes are well-formatted and include a clear description of the update.
 
@@ -525,8 +498,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Current ToDos
 - Add more seed data (styles, beers, breweries)
-- Move all seed data to `app/data/` JSON files
-- Load seed data into cache on startup
+- Enhance MCP resource endpoints with better filtering
+- Add more comprehensive error handling and logging
+- Implement caching for frequently accessed data
+
 ---
 
 **Happy Brewing!** 🍺
