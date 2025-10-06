@@ -1,41 +1,43 @@
 # BrewSource MCP Server Documentation 📚
 
-Welcome to the BrewSource MCP Server documentation. This directory contains comprehensive documentation for the project, organized by category.
+Welcome to the BrewSource MCP Server documentation. This directory contains comprehensive documentation for the project,
+ organized by category.
 
 ## 📁 Documentation Structure
 
+### Core Documentation Files
 
-### `/project/` - Project Information
-- **[PROJECT_OVERVIEW.md](project/PROJECT_OVERVIEW.md)** - High-level project overview, vision, goals, and technical architecture
-
-### `/testing/` - Quality Assurance
-- **[TESTING.md](testing/TESTING.md)** - Unified test plan and user stories for all Phase 1 functionality
-
-### `/data/` - Data Storage & Formats
-- **[DATA.md](data/DATA.md)** - Data storage approach, BJCP JSON format, validation, and seeding
+- **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)** - High-level project overview, vision, goals, and technical architecture
+- **[DATA.md](DATA.md)** - Data storage approach, BJCP JSON format, validation, and seeding
+- **[TESTING.md](TESTING.md)** - Unified test plan and user stories for all Phase 1 functionality
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Docker and Kubernetes deployment instructions
 
 ## 🚀 Quick Start
 
-1. **Understanding the Project**: Start with [PROJECT_OVERVIEW.md](project/PROJECT_OVERVIEW.md) for the big picture
-2. **Data & Storage**: See [DATA.md](data/DATA.md) for storage approach, formats, and validation
-3. **Testing & QA**: Review [TESTING.md](testing/TESTING.md) for test plan, user stories, and quality criteria
+1. **Understanding the Project**: Start with [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) for the big picture
+2. **Data & Storage**: See [DATA.md](DATA.md) for storage approach, formats, and validation
+3. **Testing & QA**: Review [TESTING.md](TESTING.md) for test plan, user stories, and quality criteria
+4. **Deployment**: Check [DEPLOYMENT.md](DEPLOYMENT.md) for deployment options and setup
 
 ## 📋 Phase 1 MVP Documentation Status
 
 - ✅ **Project Overview**: Complete high-level project documentation
 - ✅ **Data & Storage**: Hybrid storage, JSON schema, validation, and seeding docs
 - ✅ **Testing & QA**: Unified test plan and user stories for all Phase 1 features
+- ✅ **Deployment**: Docker and Kubernetes deployment instructions
 - 🔄 **API Documentation**: See main [README.md](../README.md) for current API docs
 - 🔄 **Developer Guide**: See main [README.md](../README.md) for development setup
 
 ## 🎯 Phase 1 Features Covered
 
 ### Core MCP Tools
+
 - `bjcp_lookup` - BJCP style information retrieval
 - `search_beers` - Commercial beer catalog search
 - `find_breweries` - Brewery directory search
 
 ### Quality Assurance
+
 - **Comprehensive user stories** covering happy paths, error cases, and edge conditions
 - **Multi-layered testing** approach (unit, integration, end-to-end)
 - **Performance requirements** and load testing strategies
@@ -50,6 +52,7 @@ Welcome to the BrewSource MCP Server documentation. This directory contains comp
 ## 📖 Documentation Standards
 
 All documentation follows these standards:
+
 - **Clear Structure**: Organized by logical sections with consistent formatting
 - **Actionable Content**: Specific, implementable requirements and procedures
 - **Current Status**: Reflects actual implementation state (Phase 1 MVP)
@@ -58,6 +61,7 @@ All documentation follows these standards:
 ## 🤝 Contributing to Documentation
 
 When updating documentation:
+
 1. Keep content aligned with current implementation
 2. Update version status in relevant files
 3. Maintain consistent formatting and structure
@@ -66,6 +70,6 @@ When updating documentation:
 
 ---
 
-**Last Updated**: July 24, 2025
+**Last Updated**: October 5, 2025
 **Documentation Version**: Phase 1 MVP
 **Project Status**: Active Development
