@@ -1,4 +1,4 @@
-# [BrewSource MCP Server](https://github.com/CharlRitter/brewsource-mcp) 🍺
+# BrewSource MCP Server 🍺
 
 A comprehensive Model Context Protocol (MCP) server for brewing resources, built with Go.
 
@@ -7,9 +7,9 @@ A comprehensive Model Context Protocol (MCP) server for brewing resources, built
 **BrewSource MCP** is a specialized MCP server that gives AI assistants access to essential brewing knowledge and tools.
  Currently in **Phase 1 MVP**, it focuses on core public resources:
 
-- 🔍 **Beer & Brewery Discovery** - Search basic commercial beer and brewery databases
-- 📖 **BJCP Style Guide** - Complete beer style database with lookup capabilities
-- 🔧 **Public API Layer** - Three core MCP tools for essential brewing queries
+- **Beer & Brewery Discovery** - Search basic commercial beer and brewery databases
+- **BJCP Style Guide** - Complete beer style database with lookup capabilities
+- **Public API Layer** - Three core MCP tools for essential brewing queries
 
 Future phases will expand with ingredient databases, personal analytics, recipe builders, and premium Brewfather integration.
 
@@ -218,11 +218,11 @@ make k9s
 # Health check
 curl http://localhost:8080/health
 
-# Server info
-curl http://localhost:8080/
+# Current version
+curl http://localhost:8080/version
 
-# WebSocket endpoint for MCP clients
-# ws://localhost:8080/mcp
+# Server info
+curl http://localhost:8080/api
 ```
 
 ### 6. Run Tests
@@ -250,13 +250,13 @@ func (h *ToolHandlers) MyNewTool(ctx context.Context, args map[string]interface{
 }
 ```
 
-2. **Register the tool** in `RegisterToolHandlers()`:
+1. **Register the tool** in `RegisterToolHandlers()`:
 
 ```go
 server.RegisterToolHandler("my_new_tool", h.MyNewTool)
 ```
 
-3. **Add tool definition** in `getToolDefinition()` method in `app/internal/mcp/server.go`
+1. **Add tool definition** in `getToolDefinition()` method in `app/internal/mcp/server.go`
 
 ### Adding New Resources
 
@@ -273,7 +273,7 @@ func (h *ResourceHandlers) HandleMyResource(ctx context.Context, uri string) (*m
 }
 ```
 
-2. **Register the resource** in `RegisterResourceHandlers()`:
+1. **Register the resource** in `RegisterResourceHandlers()`:
 
 ```go
 server.RegisterResourceHandler("my://resource/*", h.HandleMyResource)
@@ -299,17 +299,17 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 })
 ```
 
-## Phase 1 Implementation Status ✅
+## Phase 1 Implementation Status
 
 **BrewSource MCP** is currently in Phase 1 MVP with the following implemented features:
 
-### ✅ Core MCP Tools
+### Core MCP Tools
 
 - **`bjcp_lookup`** - Look up BJCP beer styles by code (e.g., "21A") or name
 - **`search_beers`** - Search commercial beers by name, style, brewery, or location
 - **`find_breweries`** - Find breweries by name, location, city, state, or country
 
-### ✅ MCP Resources
+### MCP Resources
 
 - **`bjcp://styles`** - Complete BJCP style guidelines database
 - **`bjcp://styles/{code}`** - Individual style details (e.g., bjcp://styles/21A)
@@ -317,7 +317,7 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 - **`beers://catalog`** - Commercial beer database
 - **`breweries://directory`** - Brewery directory
 
-### ✅ Infrastructure
+### Infrastructure
 
 - **WebSocket & Stdio Support** - Multiple connection modes for different MCP clients
 - **PostgreSQL Database** - Persistent storage with proper indexing
@@ -325,7 +325,7 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 - **Seed Data** - Pre-populated with BJCP styles, breweries, and commercial beers
 - **Comprehensive Testing** - Unit tests for brewing calculations and BJCP utilities
 
-### ✅ Developer Experience
+### Developer Experience
 
 - **Makefile** - Common development tasks (`make help` to see all commands)
 - **Environment Configuration** - Managed via .envrc and direnv
@@ -452,7 +452,7 @@ We follow an Agile development methodology with iterative releases and continuou
 - **Scalability:** Design architecture to handle future growth and new features
 - **Data Accuracy:** Ensure reliability and up-to-date nature of all beer-related data
 
-### Phase 1: Minimum Viable Product (MVP) - Core Public Resources ✅
+### Phase 1: Minimum Viable Product (MVP) - Core Public Resources
 
 **Goal:** Launch a foundational public platform with essential beer knowledge and search capabilities to validate core
  concepts and attract initial users.
@@ -472,7 +472,7 @@ We follow an Agile development methodology with iterative releases and continuou
 **Outcome:** A functional, publicly accessible MCP Beer Server with core BJCP style lookup and basic beer/brewery search
  capabilities.
 
-### Phase 2: Expanding Public Resources & Usability 🚧
+### Phase 2: Expanding Public Resources & Usability
 
 **Goal:** Enhance the public resources with more detailed information and improved search capabilities, laying the groundwork
  for future features.

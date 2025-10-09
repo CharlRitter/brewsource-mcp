@@ -17,6 +17,7 @@ RUN chmod +x /app/brewsource-mcp
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
 COPY --from=builder /app/brewsource-mcp ./brewsource-mcp
+COPY VERSION ./VERSION
 COPY app/data/ ./data/
 USER nonroot:nonroot
 EXPOSE 8080

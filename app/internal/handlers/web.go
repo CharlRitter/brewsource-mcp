@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"net/http"
 	"regexp"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/redis/go-redis/v9"
 	"github.com/russross/blackfriday/v2"
 )
 
@@ -21,14 +23,18 @@ var templateFS embed.FS
 
 // WebHandlers provides HTTP handlers for web pages.
 type WebHandlers struct {
-	templates *template.Template
+	templates   *template.Template
+	db          interface{}
+	redisClient interface{}
 }
 
 // NewWebHandlers creates a new instance of WebHandlers.
-func NewWebHandlers() *WebHandlers {
+func NewWebHandlers(db interface{}, redisClient interface{}) *WebHandlers {
 	templates := template.Must(template.ParseFS(templateFS, "templates/*.html"))
 	return &WebHandlers{
-		templates: templates,
+		templates:   templates,
+		db:          db,
+		redisClient: redisClient,
 	}
 }
 
@@ -40,6 +46,7 @@ type LandingPageData struct {
 	Host        string
 	ReadmeHTML  template.HTML
 	LastUpdated string
+	Healthy     bool
 }
 
 // ServeHome handles the root path and serves the landing page with README content.
@@ -65,14 +72,16 @@ func (w *WebHandlers) ServeHome(writer http.ResponseWriter, r *http.Request) {
 	// Sanitize HTML to prevent XSS
 	sanitizedHTML := bluemonday.UGCPolicy().Sanitize(processedHTML)
 
+	health := isDBHealthy(w.db) && isRedisHealthy(w.redisClient)
+
 	data := LandingPageData{
 		ProjectName: "BrewSource MCP Server",
 		Version:     getVersion(),
 		Description: "A comprehensive Model Context Protocol (MCP) server for brewing resources, built with Go.",
 		Host:        r.Host,
-		// Safe: sanitizedHTML is cleaned with bluemonday.
 		ReadmeHTML:  template.HTML(sanitizedHTML), // #nosec G203
 		LastUpdated: time.Now().Format("January 2, 2006"),
+		Healthy:     health,
 	}
 
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -82,19 +91,45 @@ func (w *WebHandlers) ServeHome(writer http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ServeFavicon serves the favicon.ico file from the embedded templates directory.
-func (w *WebHandlers) ServeFavicon(writer http.ResponseWriter, r *http.Request) {
-	f, err := templateFS.Open("templates/favicon.ico")
+// isDBHealthy checks if the database connection is healthy.
+func isDBHealthy(db interface{}) bool {
+	if db == nil {
+		return true
+	}
+	type pinger interface {
+		Ping() error
+	}
+	if p, ok := db.(pinger); ok {
+		err := p.Ping()
+		return err == nil
+	}
+	return false
+}
+
+const redisHealthTimeout = 2 * time.Second
+
+// isRedisHealthy checks if the Redis client is healthy.
+func isRedisHealthy(redisClient interface{}) bool {
+	if redisClient == nil {
+		return true
+	}
+	if client, ok := redisClient.(*redis.Client); ok {
+		ctx, cancel := context.WithTimeout(context.Background(), redisHealthTimeout)
+		defer cancel()
+		err := client.Ping(ctx).Err()
+		return err == nil
+	}
+	return false
+}
+
+// ServeStatic serves static assets (favicon, SVGs, etc.) from the embedded templates directory at /static/.
+func (w *WebHandlers) ServeStatic(writer http.ResponseWriter, r *http.Request) {
+	staticFS, err := fs.Sub(templateFS, "templates")
 	if err != nil {
-		http.NotFound(writer, r)
+		http.Error(writer, "Static assets not found", http.StatusInternalServerError)
 		return
 	}
-	defer f.Close()
-	writer.Header().Set("Content-Type", "image/x-icon")
-	if _, copyErr := io.Copy(writer, f); copyErr != nil {
-		http.Error(writer, "Failed to serve favicon", http.StatusInternalServerError)
-		return
-	}
+	http.FileServer(http.FS(staticFS)).ServeHTTP(writer, r)
 }
 
 // updateReadmeLinks updates relative links to absolute GitHub URLs and sets target="_blank" for all links.

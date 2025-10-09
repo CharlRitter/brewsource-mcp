@@ -90,7 +90,7 @@ func main() {
 	// Initialize handlers
 	toolHandlers := handlers.NewToolHandlers(bjcpData, beerService, breweryService)
 	resourceHandlers := handlers.NewResourceHandlers(bjcpData, beerService, breweryService)
-	webHandlers := handlers.NewWebHandlers()
+	webHandlers := handlers.NewWebHandlers(db, redisClient)
 
 	// Initialize MCP server
 	mcpServer := mcp.NewServer(toolHandlers, resourceHandlers)
@@ -184,8 +184,8 @@ func RunWebSocketServer(mcpServer *mcp.Server, webHandlers *handlers.WebHandlers
 	// Landing page (serves HTML with README content)
 	mux.HandleFunc("/", webHandlers.ServeHome)
 
-	// Favicon handler
-	mux.HandleFunc("/favicon.ico", webHandlers.ServeFavicon)
+	// Static assets handler (favicon, SVGs, etc.)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.HandlerFunc(webHandlers.ServeStatic)))
 
 	// API information endpoint (serves JSON)
 	mux.HandleFunc("/api", webHandlers.ServeAPI)
