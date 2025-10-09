@@ -662,7 +662,7 @@ func TestRunWebSocketServer(t *testing.T) {
 	// Create a mock server
 	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
 	resourceHandlers := handlers.NewResourceHandlers(nil, nil, nil)
-	webHandlers := handlers.NewWebHandlers()
+	webHandlers := handlers.NewWebHandlers(nil, nil)
 	server := mcp.NewServer(toolHandlers, resourceHandlers)
 
 	// Test that the function starts without panicking

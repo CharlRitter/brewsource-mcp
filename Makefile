@@ -130,20 +130,42 @@ test:
 # Format Go code using gofmt
 format:
 	@echo "🎨 Formatting code..."
-	@cd app && go fmt ./...
+	@go fmt ./...
 	@echo "✅ Code formatted"
 
 # Run golangci-lint for code quality checks
 lint:
-	@echo "🔍 Running linter..."
-	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run
-	@echo "✅ Linting complete"
+	@echo "🔍 Running Go linter..."
+	@go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run
+	@make format
+	@echo "🎨 Linting CSS files..."
+	@npx --yes npm install --no-save stylelint-config-standard > /dev/null 2>&1
+	@npx --yes stylelint "app/internal/handlers/templates/*.css"
+	@echo "📝 Linting HTML files..."
+	@npx --yes npm install --no-save eslint-plugin-html > /dev/null 2>&1
+	@npx --yes eslint --ext .html "app/internal/handlers/templates/*.html"
+	@npx --yes prettier --check "app/internal/handlers/templates/*.html"
+	@echo "📝 Formatting markdown files..."
+	@npx --yes npm install --no-save markdownlint-cli > /dev/null 2>&1
+	@npx --yes markdownlint --config .markdownlint.json --ignore "**/node_modules/**" "**/*.md"
+	@echo "✅ Linting and formatting complete"
 
 # Run linter with automatic fixes applied
 lint-fix:
-	@echo "🔧 Running linter with auto-fix..."
-	@cd app && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --fix
-	@echo "✅ Linting with auto-fix complete"
+	@echo "🔧 Running Go linter with auto-fix..."
+	@go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --fix
+	@make format
+	@echo "🎨 Linting and fixing CSS files with stylelint..."
+	@npx --yes npm install --no-save stylelint-config-standard > /dev/null 2>&1
+	@npx --yes stylelint --fix "app/internal/handlers/templates/*.css"
+	@echo "📝 Linting and fixing HTML files..."
+	@npx --yes npm install --no-save eslint-plugin-html > /dev/null 2>&1
+	@npx --yes eslint --ext .html --fix "app/internal/handlers/templates/*.html"
+	@npx --yes prettier --write "app/internal/handlers/templates/*.html"
+	@echo "📝 Formatting markdown files..."
+	@npx --yes npm install --no-save markdownlint-cli > /dev/null 2>&1
+	@npx --yes markdownlint --fix --config .markdownlint.json --ignore "**/node_modules/**" "**/*.md"
+	@echo "✅ Linting with auto-fix and formatting complete"
 
 # Run security scans using gosec (Go Security Checker) and govulncheck (dependency scanner)
 security:
