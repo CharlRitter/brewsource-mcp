@@ -9,16 +9,16 @@ This document provides context and instructions for GitHub Copilot to assist wit
 ### Current Phase: Phase 1 MVP
 - **BJCP Style Guide Integration** - Style lookup and information retrieval
 - **Beer & Brewery Search** - Basic commercial beer and brewery databases
-- **MCP Protocol Implementation** - WebSocket and stdio connection modes
+- **MCP Protocol Implementation** - HTTP connection modes
 - **Public API Layer** - Three core tools: `bjcp_lookup`, `search_beers`, `find_breweries`
 
 ## Architecture & Technology Stack
 
 ### Core Technologies
-- **Language**: Go 1.21+
-- **Protocol**: Model Context Protocol (MCP) - JSON-RPC 2.0 over WebSocket/stdio
+- **Language**: Go 1.24+
+- **Protocol**: Model Context Protocol (MCP) - JSON-RPC 2.0 over HTTP
 - **Database**: PostgreSQL with optional Redis caching
-- **Communication**: WebSocket and stdio modes for different MCP clients
+- **Communication**: HTTP modes for different MCP clients
 
 ### Project Structure
 ```
@@ -126,8 +126,7 @@ func (h *HopAddition) CalculateIBU(batchSize float64, originalGravity float64) f
 - **Error Responses**: Handle missing resources gracefully
 
 ### Connection Handling
-- **WebSocket**: For web-based MCP clients
-- **Stdio**: For command-line and local integrations
+- **HTTP**: For web-based MCP clients
 - **Protocol Compliance**: Strict JSON-RPC 2.0 adherence
 - **Connection Management**: Proper cleanup and error handling
 
@@ -160,7 +159,7 @@ func TestBJCPStyle_IsValid(t *testing.T) {
 - Test MCP protocol interactions end-to-end
 - Use test databases with cleanup
 - Mock external API dependencies
-- Test both WebSocket and stdio modes
+- Test both HTTP modes
 
 ## Security Considerations
 
@@ -180,7 +179,7 @@ func TestBJCPStyle_IsValid(t *testing.T) {
 
 ### Phase 1 Focus Areas
 1. **Core MCP Tools**: `bjcp_lookup`, `search_beers`, `find_breweries`
-2. **Protocol Stability**: Robust WebSocket and stdio implementations
+2. **Protocol Stability**: Robust HTTP implementations
 3. **Data Accuracy**: Correct BJCP style information and brewing calculations
 4. **Testing Coverage**: Comprehensive unit and integration tests
 5. **Documentation**: Clear setup guides and API documentation
