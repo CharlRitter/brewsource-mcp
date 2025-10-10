@@ -43,7 +43,6 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 - Input validation and error handling
 - Database connectivity and data retrieval
 - Performance and reliability requirements
-- WebSocket and stdio connection modes
 
 ### Out of Scope (Future Phases)
 
@@ -59,10 +58,11 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 
 ### Development Environment
 
-- Go 1.21+ test runner
+- Go 1.24+ test runner
 - PostgreSQL test database with sample data
 - Redis instance for caching tests (optional)
 - MCP client simulator for protocol testing
+- HTTP client (curl, Postman, or similar) for direct MCP endpoint testing
 
 ### Test Data Requirements
 
@@ -87,16 +87,15 @@ This test plan ensures comprehensive coverage of the BrewSource MCP Server Phase
 
 - Database integration and query correctness
 - MCP protocol handshake and tool/resource listing
-- WebSocket communication and error handling
 
 ### 3. End-to-End Tests
 
-- Complete user journeys (lookup, search, discovery)
+- Complete user journeys (lookup, search, discovery) via HTTP POST to `/mcp`
 - Performance and load testing (single user, concurrent users, sustained load, large datasets)
 
 ### 4. Error Handling and Edge Case Tests
 
-- Input validation and error response scenarios
+- Input validation and error response scenarios (via HTTP POST to `/mcp`)
 - System resilience (DB connectivity, memory pressure, corrupted data, concurrent access)
 
 ---

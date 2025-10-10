@@ -1,7 +1,8 @@
-// Package handlers_test contains tests for the HTTP handlers in Brewsource MCP.
+// Package handlers contains tests for the HTTP handlers in Brewsource MCP.
 package handlers_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
+	handlers "github.com/CharlRitter/brewsource-mcp/app/internal/handlers"
 )
 
 func TestNewWebHandlers(t *testing.T) {
@@ -43,9 +44,6 @@ func TestServeHome_ValidRequest(t *testing.T) {
 		}
 		if !strings.Contains(body, "localhost:8080") {
 			t.Error("Response body should contain the host")
-		}
-		if !strings.Contains(body, "ws://localhost:8080/mcp") {
-			t.Error("Response body should contain WebSocket URL")
 		}
 	} else if !strings.Contains(body, "Could not load README") {
 		t.Error("Response should contain README error message on failure")
@@ -122,7 +120,7 @@ func TestServeAPI_ValidRequest(t *testing.T) {
 		`"bjcp://styles"`,
 		`"beers://catalog"`,
 		`"breweries://directory"`,
-		`"websocket": "ws://localhost:8080/mcp"`,
+		`"http": "https://localhost:8080/mcp"`,
 	}
 
 	for _, field := range expectedFields {
@@ -160,8 +158,8 @@ func TestServeAPI_DifferentMethods(t *testing.T) {
 			t.Errorf("Method %s: Response should contain server name", method)
 		}
 
-		if !strings.Contains(body, "ws://example.com/mcp") {
-			t.Errorf("Method %s: Response should contain correct WebSocket URL for host", method)
+		if !strings.Contains(body, "https://example.com/mcp") {
+			t.Errorf("Method %s: Response should contain correct HTTP URL for host", method)
 		}
 	}
 }
@@ -209,10 +207,10 @@ func TestServeAPI_ResponseFormat(t *testing.T) {
 		}
 	}
 
-	// Test WebSocket URL format with custom host and port
-	expectedWebSocketURL := `"websocket": "ws://test.example.com:3000/mcp"`
-	if !strings.Contains(body, expectedWebSocketURL) {
-		t.Errorf("Response should contain WebSocket URL: %s", expectedWebSocketURL)
+	// Test HTTP URL format with custom host and port
+	expectedHTTPURL := `"http": "https://test.example.com:3000/mcp"`
+	if !strings.Contains(body, expectedHTTPURL) {
+		t.Errorf("Response should contain HTTP URL: %s", expectedHTTPURL)
 	}
 }
 
@@ -505,5 +503,117 @@ func TestServeStatic(t *testing.T) {
 		if recorder.Body.Len() == 0 {
 			t.Error("Static asset response body should not be empty")
 		}
+	}
+}
+
+// healthyPinger and unhealthyPinger mocks for isDBHealthy.
+type healthyPinger struct{}
+
+func (h healthyPinger) Ping() error { return nil }
+
+type unhealthyPinger struct{}
+
+func (u unhealthyPinger) Ping() error { return errors.New("fail") }
+
+// Test isDBHealthy with nil, healthy, and unhealthy DB.
+func Test_isDBHealthy(t *testing.T) {
+	// nil db should be healthy
+	if !handlers.IsDBHealthy(nil) {
+		t.Error("Expected nil db to be healthy")
+	}
+
+	// healthy db mock
+	if !handlers.IsDBHealthy(healthyPinger{}) {
+		t.Error("Expected healthy db to be healthy")
+	}
+
+	// unhealthy db mock
+	if handlers.IsDBHealthy(unhealthyPinger{}) {
+		t.Error("Expected unhealthy db to be unhealthy")
+	}
+}
+
+// Test isRedisHealthy with nil redis client (should be healthy).
+func Test_isRedisHealthy_nil(t *testing.T) {
+	if !handlers.IsRedisHealthy(nil) {
+		t.Error("Expected nil redis client to be healthy")
+	}
+}
+
+// Test updateReadmeLinks for link rewriting and target attribute.
+func Test_updateReadmeLinks(t *testing.T) {
+	// Relative link
+	html := `<a href="docs/README.md">Docs</a>`
+	out := handlers.UpdateReadmeLinks(html)
+	if !strings.Contains(out, "https://github.com/CharlRitter/brewsource-mcp/tree/main/docs/README.md") {
+		t.Error("Relative link not rewritten to absolute GitHub URL")
+	}
+	if !strings.Contains(out, "target=\"_blank\"") {
+		t.Error("target=\"_blank\" not added to link")
+	}
+
+	// Absolute link should remain unchanged but get target
+	html2 := `<a href="https://example.com">Site</a>`
+	out2 := handlers.UpdateReadmeLinks(html2)
+	if !strings.Contains(out2, "href=\"https://example.com\"") {
+		t.Error("Absolute link should not be rewritten")
+	}
+	if !strings.Contains(out2, "target=\"_blank\"") {
+		t.Error("target=\"_blank\" not added to absolute link")
+	}
+
+	// Already has target
+	html3 := `<a href="foo" target="_blank">Foo</a>`
+	out3 := handlers.UpdateReadmeLinks(html3)
+	if strings.Count(out3, "target=\"_blank\"") != 1 {
+		t.Error("Should not add duplicate target attribute")
+	}
+}
+
+// Test getVersion returns correct version from VERSION file or fallback.
+func Test_getVersion(t *testing.T) {
+	// Write a temp VERSION file
+	tempDir := t.TempDir()
+	versionPath := filepath.Join(tempDir, "VERSION")
+	versionContent := "v1.2.3\n"
+	if err := os.WriteFile(versionPath, []byte(versionContent), 0o644); err != nil {
+		t.Fatalf("Failed to write temp VERSION: %v", err)
+	}
+	os.Getwd()
+	t.Chdir(tempDir)
+
+	v := handlers.GetVersion()
+	if v != "v1.2.3" {
+		t.Errorf("Expected version 'v1.2.3', got '%s'", v)
+	}
+
+	// Remove VERSION file, should fallback to 'dev'
+	os.Remove("VERSION")
+	v2 := handlers.GetVersion()
+	if v2 != "dev" {
+		t.Errorf("Expected fallback version 'dev', got '%s'", v2)
+	}
+}
+
+// Test ServeVersion handler returns correct JSON.
+func Test_ServeVersion(t *testing.T) {
+	webHandlers := handlers.NewWebHandlers(nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	recorder := httptest.NewRecorder()
+	webHandlers.ServeVersion(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, recorder.Code)
+	}
+	contentType := recorder.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, "version") {
+		t.Error("Response should contain version field")
+	}
+	if !strings.HasPrefix(body, "{") || !strings.HasSuffix(strings.TrimSpace(body), "}") {
+		t.Error("Response should be valid JSON object")
 	}
 }

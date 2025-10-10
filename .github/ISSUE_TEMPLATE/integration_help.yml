@@ -30,9 +30,7 @@ body:
       label: Connection Type
       description: How are you trying to connect to the MCP server?
       options:
-        - WebSocket
-        - Stdio
-        - Not sure
+        - HTTP
     validations:
       required: true
 
@@ -55,7 +53,7 @@ body:
       label: Current Approach
       description: What have you tried so far?
       placeholder: |
-        - Connected to WebSocket endpoint
+        - Connected to HTTP endpoint
         - Successfully called initialize
         - Trying to call bjcp_lookup tool
         - Getting error: ...

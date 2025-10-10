@@ -43,7 +43,7 @@ As an MCP server, BrewSource handles external connections and data requests. Key
 
 #### Connection Security
 
-- **WebSocket Connections** - Validate all incoming connections
+- **HTTP Connections** - Validate all incoming connections
 - **Input Validation** - Sanitize all MCP tool parameters
 - **Rate Limiting** - Prevent abuse through excessive requests
 - **Error Handling** - Avoid exposing sensitive information in error messages
