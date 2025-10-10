@@ -141,39 +141,33 @@ Once running, you'll have:
 - **Redis**: localhost:6379
 - **Tilt Dashboard**: <http://localhost:10350>
 
-## Local MCP Integration
+## MCP Client Configuration (HTTP Mode)
 
-To connect to the BrewSource MCP server through the Node.js bridge, configure your MCP client to use the bridge as a stdio
- server. This is especially useful for local development and testing.
+The BrewSource MCP server now supports HTTP-based MCP communication for both local development and production.
 
-When testing locally, your MCP server configuration might look like this:
+### Production/Remote Usage
+
+To connect to the production MCP server, use the following configuration in your `mcp.json`:
 
 ```json
 "brewsource": {
-    "type": "stdio",
-    "command": "node",
-    "args": [
-        "/path/to/brewsource-mcp/bridge/index.js"
-    ]
+    "type": "http",
+    "url": "https://brewsource.charlritter.com/mcp"
 }
 ```
 
-> **Note:** The above is a general example. If you are running on Windows with WSL, you might use:
->
-> ```json
-> "command": "C:\\Windows\\System32\\wsl.exe",
-> "args": [
->   "-d",
->   "Ubuntu",
->   "--exec",
->   "node",
->   "/home/{user}/workspace/brewsource-mcp/bridge/index.js"
-> ]
-> ```
->
-> Adapt the `command` and `args` fields as needed for your OS and environment.
+### Local Development Usage
 
-### 1. Clone and Setup
+To run and test the MCP server locally, use:
+
+```json
+"brewsource": {
+    "type": "http",
+    "url": "http://localhost:8080/mcp"
+}
+```
+
+### Quick Start for Local Development
 
 ```bash
 git clone <repository-url>
@@ -181,29 +175,9 @@ cd brewsource-mcp
 make up
 ```
 
-### 2. Configure Environment
-
-```bash
-# Environment is automatically configured via .envrc and direnv
-# No manual configuration needed for development
-```
-
-### 3. Create Database
-
-```bash
-# Create the database
-createdb brewsource
-
-# Or using psql
-psql -c "CREATE DATABASE brewsource;"
-```
-
 ### 4. Build and Run
 
 ```bash
-# Build the server
-make build
-
 # Run development environment (Kubernetes + Tilt)
 # Access the Tilt dashboard at http://localhost:10350
 make up
@@ -319,7 +293,6 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 
 ### Infrastructure
 
-- **WebSocket & Stdio Support** - Multiple connection modes for different MCP clients
 - **PostgreSQL Database** - Persistent storage with proper indexing
 - **Redis Caching** - Optional caching layer for improved performance
 - **Seed Data** - Pre-populated with BJCP styles, breweries, and commercial beers
@@ -336,7 +309,7 @@ results := styleGuide.SearchStyles(bjcp.StyleSearchQuery{
 
 ### MCP Protocol Flow
 
-1. **Client Connection**: MCP client connects via WebSocket or stdio
+1. **Client Connection**: MCP client connects via HTTP
 2. **Initialization**: Client and server exchange capabilities
 3. **Resource/Tool Discovery**: Client can list available resources and tools
 4. **Request/Response**: Client calls tools or requests resources
@@ -382,7 +355,7 @@ psql "your-database-url-here"
 lsof -i :8080
 
 # Run on different port
-./bin/brewsource-mcp -mode=websocket -port=8081
+./bin/brewsource-mcp -port=8081
 ```
 
 **Missing Environment Variables**
@@ -467,7 +440,7 @@ We follow an Agile development methodology with iterative releases and continuou
  (name, location)
 - [x] **MCP Tools - Public Layer (Basic):** `bjcp_lookup`, `search_beers`, `find_breweries`
 - [x] **Manual Data Input:** Limited initial set of styles, beers, and breweries
-- [x] **WebSocket & Stdio Support:** Multiple connection modes for different MCP clients
+- [x] **HTTP Support:** HTTP connection mode for the MCP client
 
 **Outcome:** A functional, publicly accessible MCP Beer Server with core BJCP style lookup and basic beer/brewery search
  capabilities.

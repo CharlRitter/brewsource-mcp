@@ -98,6 +98,8 @@ func seedBeers(ctx context.Context, db *sqlx.DB) error {
 	return nil
 }
 
+// GetBreweryIDs retrieves a mapping of brewery names to their IDs from the database.
+// It returns a map of brewery name to ID, or an error if the query fails.
 func GetBreweryIDs(ctx context.Context, db *sqlx.DB) (map[string]int, error) {
 	breweries := map[string]int{}
 	rows, err := db.QueryxContext(ctx, "SELECT id, name FROM breweries")
