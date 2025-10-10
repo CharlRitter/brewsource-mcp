@@ -4,8 +4,6 @@ package main_test
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -16,7 +14,6 @@ import (
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
 	"github.com/CharlRitter/brewsource-mcp/app/internal/services"
 	"github.com/CharlRitter/brewsource-mcp/app/pkg/data"
-	"github.com/gorilla/websocket"
 )
 
 // mockBeerService implements a mock for BeerService for testing.
@@ -463,53 +460,6 @@ func TestMCP_ConcurrentAccess(t *testing.T) {
 	}
 }
 
-func TestMCP_WebSocketConnection(t *testing.T) {
-	// Skip in short mode
-	if testing.Short() {
-		t.Skip("Skipping WebSocket test in short mode")
-	}
-
-	// Start test server
-	server := mcp.NewServer(nil, nil)
-	ts := httptest.NewServer(http.HandlerFunc(server.HandleWebSocket))
-	defer ts.Close()
-
-	// Convert http URL to ws URL
-	wsURL := strings.Replace(ts.URL, "http", "ws", 1)
-
-	// Connect to WebSocket
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		t.Fatalf("Failed to connect to WebSocket: %v", err)
-	}
-	defer ws.Close()
-
-	// Send initialize message
-	initMsg := mcp.InitializeRequest{
-		ProtocolVersion: "2024-11-05",
-		ClientInfo: mcp.ClientInfo{
-			Name:    "test-client",
-			Version: "1.0.0",
-		},
-	}
-
-	err = ws.WriteJSON(mcp.NewMessage("initialize", initMsg))
-	if err != nil {
-		t.Fatalf("Failed to send initialize message: %v", err)
-	}
-
-	// Read response
-	var response mcp.Message
-	err = ws.ReadJSON(&response)
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
-
-	if response.Error != nil {
-		t.Errorf("Unexpected error in response: %v", response.Error)
-	}
-}
-
 func TestMCP_Performance(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping performance test in short mode")
@@ -616,50 +566,13 @@ func TestInitRedis(t *testing.T) {
 	_ = client // Suppress unused variable warning
 }
 
-// Test runStdioServer function (limited test due to stdio nature).
-func TestRunStdioServer(t *testing.T) {
-	// Create a mock server
-	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
-	resourceHandlers := handlers.NewResourceHandlers(nil, nil, nil)
-	server := mcp.NewServer(toolHandlers, resourceHandlers)
-
-	// Test that the function exists and can be called without panicking
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("runStdioServer panicked: %v", r)
-		}
-	}()
-
-	// Since we can't provide stdin input in a unit test, we just verify
-	// the function exists and doesn't panic when called
-	// The actual stdio functionality would be tested in integration tests
-	done := make(chan bool, 1)
-	go func() {
-		defer func() {
-			if r := recover(); r == nil {
-				done <- true
-			}
-		}()
-		// This will exit quickly due to EOF on stdin, which is expected in tests
-		main.RunStdioServer(server)
-	}()
-
-	// Give it a moment to start and encounter EOF
-	select {
-	case <-done:
-		// Function completed without panic - this is what we want to test
-	case <-time.After(100 * time.Millisecond):
-		// Timeout is also acceptable as the function may be waiting for input
-	}
-}
-
-// Test runWebSocketServer function.
-func TestRunWebSocketServer(t *testing.T) {
+// Test RunHTTPServer function.
+func TestRunHTTPServer(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping WebSocket server test in short mode")
+		t.Skip("Skipping HTTP server test in short mode")
 	}
 
-	// Create a mock server
+	// Create a mock server and handlers
 	toolHandlers := handlers.NewToolHandlers(nil, nil, nil)
 	resourceHandlers := handlers.NewResourceHandlers(nil, nil, nil)
 	webHandlers := handlers.NewWebHandlers(nil, nil)
@@ -670,21 +583,19 @@ func TestRunWebSocketServer(t *testing.T) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				t.Errorf("runWebSocketServer panicked: %v", r)
+				t.Errorf("RunHTTPServer panicked: %v", r)
 			}
 			done <- true
 		}()
 
 		// Use a test port
-		main.RunWebSocketServer(server, webHandlers, "0") // Port 0 will assign a random available port
+		main.RunHTTPServer(server, webHandlers, "0") // Port 0 will assign a random available port
 	}()
 
 	// Give it a moment to start
 	time.Sleep(100 * time.Millisecond)
 
-	// Send interrupt signal to trigger graceful shutdown
-	// Note: In a real test environment, we would send SIGTERM, but that's complex to test
-
+	// The server runs indefinitely, so we just check that it started without panicking
 	select {
 	case <-done:
 		// Function completed

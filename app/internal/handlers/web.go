@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
@@ -67,16 +68,16 @@ func (w *WebHandlers) ServeHome(writer http.ResponseWriter, r *http.Request) {
 	htmlContent := blackfriday.Run(readmeContent)
 
 	// Post-process links: make relative links absolute to GitHub and set target="_blank"
-	processedHTML := updateReadmeLinks(string(htmlContent))
+	processedHTML := UpdateReadmeLinks(string(htmlContent))
 
 	// Sanitize HTML to prevent XSS
 	sanitizedHTML := bluemonday.UGCPolicy().Sanitize(processedHTML)
 
-	health := isDBHealthy(w.db) && isRedisHealthy(w.redisClient)
+	health := IsDBHealthy(w.db) && IsRedisHealthy(w.redisClient)
 
 	data := LandingPageData{
 		ProjectName: "BrewSource MCP Server",
-		Version:     getVersion(),
+		Version:     GetVersion(),
 		Description: "A comprehensive Model Context Protocol (MCP) server for brewing resources, built with Go.",
 		Host:        r.Host,
 		ReadmeHTML:  template.HTML(sanitizedHTML), // #nosec G203
@@ -91,8 +92,8 @@ func (w *WebHandlers) ServeHome(writer http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// isDBHealthy checks if the database connection is healthy.
-func isDBHealthy(db interface{}) bool {
+// IsDBHealthy checks if the database connection is healthy.
+func IsDBHealthy(db interface{}) bool {
 	if db == nil {
 		return true
 	}
@@ -108,8 +109,8 @@ func isDBHealthy(db interface{}) bool {
 
 const redisHealthTimeout = 2 * time.Second
 
-// isRedisHealthy checks if the Redis client is healthy.
-func isRedisHealthy(redisClient interface{}) bool {
+// IsRedisHealthy checks if the Redis client is healthy.
+func IsRedisHealthy(redisClient interface{}) bool {
 	if redisClient == nil {
 		return true
 	}
@@ -132,8 +133,8 @@ func (w *WebHandlers) ServeStatic(writer http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.FS(staticFS)).ServeHTTP(writer, r)
 }
 
-// updateReadmeLinks updates relative links to absolute GitHub URLs and sets target="_blank" for all links.
-func updateReadmeLinks(html string) string {
+// UpdateReadmeLinks updates relative links to absolute GitHub URLs and sets target="_blank" for all links.
+func UpdateReadmeLinks(html string) string {
 	repoURL := "https://github.com/CharlRitter/brewsource-mcp/tree/main"
 	// Replace hrefs that start with ./ or ../
 	reDot := regexp.MustCompile(`<a ([^>]*?)href=["'](\.?\.?/[^"'>]+)["']([^>]*)>`)
@@ -173,33 +174,11 @@ func updateReadmeLinks(html string) string {
 
 // ServeAPI handles the /api path and provides API information.
 func (w *WebHandlers) ServeAPI(writer http.ResponseWriter, r *http.Request) {
-	// Check if this is an HTMX request
-	if r.Header.Get("Hx-Request") == "true" {
-		// Return HTML fragment for HTMX
-		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-		writer.WriteHeader(http.StatusOK)
-
-		data := struct {
-			Version string
-			Host    string
-		}{
-			Version: getVersion(),
-			Host:    r.Host,
-		}
-
-		if err := w.templates.ExecuteTemplate(writer, "api-fragment.html", data); err != nil {
-			http.Error(writer, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		return
-	}
-
-	// Original JSON response for non-HTMX requests
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
 		"name":        "BrewSource MCP Server",
-		"version":     getVersion(),
+		"version":     GetVersion(),
 		"description": "Model Context Protocol server for brewing resources",
 		"endpoints": map[string]string{
 			"mcp":    "/mcp",
@@ -219,8 +198,8 @@ func (w *WebHandlers) ServeAPI(writer http.ResponseWriter, r *http.Request) {
 			"breweries://directory",
 		},
 		"connection": map[string]interface{}{
-			"websocket":           "ws://" + r.Host + "/mcp",
-			"supported_protocols": []string{"websocket", "stdio"},
+			"http":                "https://" + r.Host + "/mcp",
+			"supported_protocols": []string{"http"},
 		},
 	}
 	jsonBytes, err := json.MarshalIndent(response, "", "  ")
@@ -231,44 +210,40 @@ func (w *WebHandlers) ServeAPI(writer http.ResponseWriter, r *http.Request) {
 	_, _ = writer.Write(jsonBytes)
 }
 
-// ServeHealth handles the /health endpoint for both JSON and HTMX requests.
-func (w *WebHandlers) ServeHealth(writer http.ResponseWriter, r *http.Request) {
-	// Check if this is an HTMX request
-	if r.Header.Get("Hx-Request") == "true" {
-		// Return HTML fragment for HTMX
-		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-		writer.WriteHeader(http.StatusOK)
-
-		// Check if this is for the status indicator specifically
-		if r.URL.Query().Get("target") == "status" {
-			if err := w.templates.ExecuteTemplate(writer, "status-indicator.html", nil); err != nil {
-				http.Error(writer, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			return
-		}
-
-		// Full health details
-		data := struct {
-			Version string
-		}{
-			Version: getVersion(),
-		}
-
-		if err := w.templates.ExecuteTemplate(writer, "health-fragment.html", data); err != nil {
-			http.Error(writer, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		return
-	}
-
-	// Original JSON response for non-HTMX requests
+// ServeHealth handles the /health endpoint for both JSON requests.
+func (w *WebHandlers) ServeHealth(writer http.ResponseWriter, _ *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
 		"status":  "healthy",
 		"service": "brewsource-mcp",
-		"version": getVersion(),
+		"version": GetVersion(),
+	}
+	jsonBytes, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		http.Error(writer, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	_, _ = writer.Write(jsonBytes)
+}
+
+func GetVersion() string {
+	// Read version from VERSION file
+	version := "dev"
+	if vbytes, verr := os.ReadFile("VERSION"); verr == nil {
+		version = string(vbytes)
+		version = string([]byte(version))
+		version = string([]rune(version)[0 : len(version)-1]) // Remove trailing newline
+	}
+	return version
+}
+
+// ServeVersion handles the /version endpoint for both JSON requests.
+func (w *WebHandlers) ServeVersion(writer http.ResponseWriter, _ *http.Request) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"version": GetVersion(),
 	}
 	jsonBytes, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {

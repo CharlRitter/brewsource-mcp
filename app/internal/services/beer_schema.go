@@ -1,6 +1,7 @@
 // Package services provides business logic and service layer functions for Brewsource MCP, including beer and brewery operations.
 package services
 
+// SeedBeer represents a sample or seed beer entry with core beer attributes for seeding the database or providing example data.
 type SeedBeer struct {
 	Name        string
 	BreweryName string

@@ -92,7 +92,7 @@ Our development environment uses modern Kubernetes-native tools with automatic d
 
 If you prefer not to use Nix/direnv:
 
-- **Go 1.21+** - Latest stable version recommended
+- **Go 1.24+** - Latest stable version recommended
 - **Kind** - Local Kubernetes cluster
 - **Tilt** - Development orchestration
 - **k9s** - Interactive Kubernetes CLI
