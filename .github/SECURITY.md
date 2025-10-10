@@ -17,7 +17,7 @@ We take the security of BrewSource MCP Server seriously. If you discover a secur
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to: **security@brewsource-mcp.dev** (or create a private security advisory on GitHub)
+Instead, please send an email to: **<security@brewsource-mcp.dev>** (or create a private security advisory on GitHub)
 
 Include the following information in your report:
 
@@ -42,12 +42,14 @@ Include the following information in your report:
 As an MCP server, BrewSource handles external connections and data requests. Key security considerations include:
 
 #### Connection Security
-- **WebSocket Connections** - Validate all incoming connections
+
+- **HTTP Connections** - Validate all incoming connections
 - **Input Validation** - Sanitize all MCP tool parameters
 - **Rate Limiting** - Prevent abuse through excessive requests
 - **Error Handling** - Avoid exposing sensitive information in error messages
 
 #### Data Protection
+
 - **Database Security** - Use parameterized queries to prevent SQL injection
 - **User Data** - Minimal data collection, secure storage practices
 - **API Keys** - Secure handling of external API credentials
@@ -56,6 +58,7 @@ As an MCP server, BrewSource handles external connections and data requests. Key
 ### Current Security Measures
 
 #### Input Validation
+
 ```go
 // Example: Validate BJCP style codes
 func validateStyleCode(code string) error {
@@ -73,11 +76,13 @@ func validateStyleCode(code string) error {
 ```
 
 #### Database Security
+
 - Parameterized queries for all database operations
 - Database connection pooling with limits
 - Regular dependency updates via Dependabot
 
 #### Error Handling
+
 - Generic error messages to external clients
 - Detailed logging for debugging (without sensitive data)
 - Proper HTTP status codes
@@ -85,11 +90,13 @@ func validateStyleCode(code string) error {
 ### Potential Security Risks
 
 #### MCP-Specific Risks
+
 - **Malicious Tool Calls** - Ensure tool parameters are validated
 - **Resource Exhaustion** - Implement rate limiting and timeouts
 - **Data Injection** - Validate all user inputs before database queries
 
 #### Application-Specific Risks
+
 - **Database Injection** - Use parameterized queries
 - **External API Abuse** - Rate limit external API calls
 - **Memory Exhaustion** - Limit response sizes and processing time
@@ -97,6 +104,7 @@ func validateStyleCode(code string) error {
 ### Security Best Practices for Contributors
 
 #### Code Security
+
 - Always validate user inputs
 - Use parameterized database queries
 - Handle errors without exposing sensitive information
@@ -104,6 +112,7 @@ func validateStyleCode(code string) error {
 - Keep dependencies up to date
 
 #### Example Secure Code Patterns
+
 ```go
 // Good: Parameterized query
 func (r *Repository) GetStyle(ctx context.Context, code string) (*Style, error) {
@@ -121,6 +130,7 @@ func (r *Repository) GetStyleUnsafe(ctx context.Context, code string) (*Style, e
 ```
 
 #### MCP Tool Security
+
 ```go
 // Validate all tool parameters
 func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
@@ -146,12 +156,14 @@ func (h *ToolHandlers) BJCPLookup(ctx context.Context, args map[string]interface
 ### Dependencies and Supply Chain Security
 
 #### Dependency Management
+
 - Regular dependency updates via Dependabot
 - Security scanning of dependencies
 - Minimal dependency footprint
 - Prefer well-maintained, popular libraries
 
 #### Go Module Security
+
 ```bash
 # Check for known vulnerabilities
 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
@@ -164,12 +176,14 @@ go mod tidy
 ### Deployment Security
 
 #### Environment Configuration
+
 - Never commit secrets to version control
 - Use environment variables for sensitive configuration
 - Implement proper secrets management
 - Regular security updates for base images and OS
 
 #### Database Security
+
 - Use connection pooling with limits
 - Implement database user with minimal required permissions
 - Regular database backups with encryption
@@ -203,7 +217,7 @@ go mod tidy
 
 For security-related questions or concerns:
 
-- **Email**: security@brewsource-mcp.dev
+- **Email**: <security@brewsource-mcp.dev>
 - **GitHub**: Create a private security advisory
 - **Response Time**: Within 48 hours for acknowledgment
 

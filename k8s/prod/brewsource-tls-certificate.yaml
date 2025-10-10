@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: brewsource-tls-cert
+  namespace: brewsource-prod
+spec:
+  secretName: brewsource-tls-secret
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: brewsource.charlritter.com
+  dnsNames:
+    - brewsource.charlritter.com
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth

@@ -20,11 +20,11 @@ module.exports = {
       ]
     ],
 
-    // Subject case - lower case
-    'subject-case': [2, 'always', 'lower-case'],
+    // Subject case - disabled to accommodate automated PRs
+    'subject-case': [0],
 
-    // Subject length limits
-    'subject-max-length': [2, 'always', 72],
+    // Subject length limits - disabled to accommodate automated PRs
+    'subject-max-length': [0],
     'subject-min-length': [2, 'always', 10],
 
     // Body line length

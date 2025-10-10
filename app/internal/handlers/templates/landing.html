@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="{{.Description}}" />
+    <meta
+      name="keywords"
+      content="brewing, MCP, beer, mead, cider, breweries, BJCP, BrewSource, open source, server"
+    />
+    <meta name="author" content="Charl Ritter" />
+    <meta property="og:title" content="{{.ProjectName}}" />
+    <meta property="og:description" content="{{.Description}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://{{.Host}}/" />
+    <meta property="og:image" content="/static/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>{{.ProjectName}}</title>
+    <link rel="stylesheet" href="/static/base.css" id="base-css" />
+    <link rel="stylesheet" href="/static/light.css" id="theme-css" />
+    <script>
+      // Theme switching for light/dark CSS
+      function setDarkMode(on) {
+        var themeCss = document.getElementById("theme-css");
+        var moonIcon = document.getElementById("moon-icon");
+        var sunIcon = document.getElementById("sun-icon");
+        if (on) {
+          document.body.classList.add("dark-mode");
+          themeCss.setAttribute("href", "/static/dark.css");
+          localStorage.setItem("darkMode", "1");
+          if (moonIcon && sunIcon) {
+            moonIcon.style.display = "none";
+            sunIcon.style.display = "";
+          }
+        } else {
+          document.body.classList.remove("dark-mode");
+          themeCss.setAttribute("href", "/static/light.css");
+          localStorage.setItem("darkMode", "0");
+          if (moonIcon && sunIcon) {
+            moonIcon.style.display = "";
+            sunIcon.style.display = "none";
+          }
+        }
+      }
+      function toggleDarkMode() {
+        setDarkMode(!document.body.classList.contains("dark-mode"));
+      }
+      window.addEventListener("DOMContentLoaded", function () {
+        var prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (
+          localStorage.getItem("darkMode") === "1" ||
+          (localStorage.getItem("darkMode") === null && prefersDark)
+        ) {
+          setDarkMode(true);
+        } else {
+          setDarkMode(false);
+        }
+        // Keyboard shortcut: Alt+D
+        document.addEventListener("keydown", function (e) {
+          if (e.altKey && e.key.toLowerCase() === "d") {
+            toggleDarkMode();
+          }
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <header class="hero" role="banner">
+      <div class="hero-header-row">
+        <div></div>
+        <h1 class="hero-title">{{.ProjectName}}</h1>
+        <button
+          class="icon-button theme-toggle hero-header-end"
+          aria-label="Toggle dark mode"
+          onclick="toggleDarkMode()"
+          title="Toggle dark mode (Alt+D)"
+        >
+          <svg width="26" height="26" aria-hidden="true" id="moon-icon" focusable="false">
+            <use xlink:href="/static/icons.svg#moon"></use>
+          </svg>
+          <svg width="26" height="26" aria-hidden="true" id="sun-icon" focusable="false">
+            <use xlink:href="/static/icons.svg#sun"></use>
+          </svg>
+        </button>
+      </div>
+      <p class="hero-tagline">
+        Open Source Modern Context Protocol (MCP) server for brewing, beer, mead, cider, and more.
+        Connect, explore, and power your brewing data with LLM integration.
+      </p>
+      <a href="#main-content" class="hero-cta" role="button" tabindex="0">Get Started</a>
+    </header>
+    <section class="status-card" id="server-status" aria-labelledby="server-status-title">
+      <div class="status-header">
+        <span class="status-icon" aria-hidden="true">
+          {{ if .Healthy }}
+          <span class="status-indicator-dot" title="Server running"></span>
+          {{ else }}
+          <span class="status-indicator-dot error" title="Server error"></span>
+          {{ end }}
+        </span>
+        <span class="status-title" id="server-status-title">Server Status</span>
+        <span class="status-indicator-text">
+          {{ if .Healthy }}<span class="status-ok">Running</span>{{ else }}<span
+            class="status-error"
+            >Error</span
+          >{{ end }}
+        </span>
+      </div>
+      <div class="status-details">
+        <div class="status-detail">
+          <span class="status-label">Version:</span>
+          <span class="status-value">v{{ .Version }}</span>
+        </div>
+        <div class="status-detail">
+          <span class="status-label">HTTP:</span>
+          <span class="status-value" aria-label="HTTP endpoint">https://{{.Host}}/mcp</span>
+          <span class="status-desc">(Live MCP connection for LLM integration)</span>
+        </div>
+        <div class="status-detail">
+          <span class="status-label">API:</span>
+          <span class="status-value" aria-label="API endpoint">https://{{.Host}}/api</span>
+          <span class="status-desc">(REST endpoint for server info and data)</span>
+        </div>
+        <div class="status-detail relevant-links">
+          <span class="status-label">Relevant Links:</span>
+          <span class="status-value">
+            <a
+              href="https://github.com/CharlRitter/brewsource-mcp"
+              target="_blank"
+              rel="noopener"
+              aria-label="GitHub Repository"
+              >GitHub</a
+            >
+            &nbsp;|&nbsp;
+            <a
+              href="https://www.bjcp.org/style-guidelines/"
+              target="_blank"
+              rel="noopener"
+              aria-label="BJCP Guidelines"
+              >BJCP</a
+            >
+          </span>
+        </div>
+      </div>
+    </section>
+    <section class="features-section" aria-label="Key Features">
+      <div class="feature-card">
+        <svg
+          class="feature-icon feature-icon-server"
+          width="32"
+          height="32"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <use xlink:href="/static/icons.svg#server"></use>
+        </svg>
+        <span class="feature-title">Modern REST API</span>
+        <span class="feature-desc"
+          >Real-time and RESTful endpoints for seamless integration with your brewing tools and
+          LLMs.</span
+        >
+      </div>
+      <div class="feature-card">
+        <svg
+          class="feature-icon feature-icon-check"
+          width="32"
+          height="32"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <use xlink:href="/static/icons.svg#check"></use>
+        </svg>
+        <span class="feature-title">Open Source & Extensible</span>
+        <span class="feature-desc"
+          >MIT-licensed, community-driven, and easy to extend for new beverage types and data
+          models.</span
+        >
+      </div>
+      <div class="feature-card">
+        <svg
+          class="feature-icon feature-icon-clock"
+          width="32"
+          height="32"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <use xlink:href="/static/icons.svg#clock"></use>
+        </svg>
+        <span class="feature-title">LLM-Ready</span>
+        <span class="feature-desc"
+          >Designed for AI/LLM integration, enabling smart queries and context-aware brewing
+          assistance.</span
+        >
+      </div>
+    </section>
+    <main id="content" class="content" tabindex="-1">{{.ReadmeHTML}}</main>
+    <footer class="footer" role="contentinfo">
+      <div class="footer-author-social">
+        <span>by Charl Ritter</span>
+        <a
+          href="https://www.linkedin.com/in/charl-ritter-0a1a45130/"
+          target="_blank"
+          rel="noopener"
+          title="LinkedIn"
+          class="icon-button"
+          aria-label="Charl Ritter on LinkedIn"
+        >
+          <svg width="26" height="26" aria-hidden="true" focusable="false">
+            <use xlink:href="/static/icons.svg#linkedin"></use>
+          </svg>
+        </a>
+        <a
+          href="https://github.com/CharlRitter"
+          target="_blank"
+          rel="noopener"
+          title="GitHub"
+          class="icon-button"
+          aria-label="Charl Ritter on GitHub"
+        >
+          <svg width="26" height="26" aria-hidden="true" focusable="false">
+            <use xlink:href="/static/icons.svg#github"></use>
+          </svg>
+        </a>
+      </div>
+      <span class="footer-updated">Last Updated: {{.LastUpdated}}</span>
+      <span>&copy; 2025 BrewSource MCP Server</span>
+    </footer>
+  </body>
+</html>

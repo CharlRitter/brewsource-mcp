@@ -9,15 +9,16 @@ RUN go mod download
 # Copy the rest of the source code
 COPY . .
 
-# Build the binary for Linux amd64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/brewsource-mcp ./app/cmd/server
+# Build the binary for Linux
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/brewsource-mcp ./app/cmd/server/main.go
 RUN chmod +x /app/brewsource-mcp
 
 # Runtime stage
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
 COPY --from=builder /app/brewsource-mcp ./brewsource-mcp
+COPY VERSION ./VERSION
 COPY app/data/ ./data/
 USER nonroot:nonroot
 EXPOSE 8080
-CMD ["./brewsource-mcp", "-mode=websocket", "-port=8080"]
+CMD ["./brewsource-mcp", "-port=8080"]

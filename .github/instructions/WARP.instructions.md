@@ -49,7 +49,6 @@ make format
 ### Database Operations
 ```bash
 # The database is automatically migrated and seeded during startup
-# Manual seeding (if needed): make seed-data
 
 # Connect to database
 psql-dev  # (alias set in .envrc)
@@ -62,7 +61,7 @@ redis-cli-dev  # (alias set in .envrc)
 
 ### High-Level Architecture
 This is a **layered MCP server architecture** with:
-- **MCP Protocol Layer** (`internal/mcp/`) - Handles JSON-RPC 2.0 over WebSocket/stdio
+- **MCP Protocol Layer** (`internal/mcp/`) - Handles JSON-RPC 2.0 over HTTP
 - **Handler Layer** (`internal/handlers/`) - Tool and resource request handlers
 - **Service Layer** (`internal/services/`) - Business logic for beer/brewery operations
 - **Data Layer** (`internal/models/`, `pkg/data/`) - Database models and BJCP data
@@ -70,7 +69,7 @@ This is a **layered MCP server architecture** with:
 ### Key Components
 
 **MCP Server Core** (`internal/mcp/server.go`):
-- Dual-mode server supporting both WebSocket and stdio connections
+- Server supports http mode
 - Implements JSON-RPC 2.0 protocol with proper error handling
 - Dynamic tool and resource handler registration system
 
@@ -198,26 +197,18 @@ return nil, &mcp.Error{
 
 ## Server Modes
 
-### WebSocket Mode (Default)
+### HTTP Mode
 ```bash
-# Start server (default mode)
+# Start server
 ./app/bin/brewsource-mcp
 
 # Or explicitly
-./app/bin/brewsource-mcp -mode=websocket -port=8080
+./app/bin/brewsource-mcp -port=8080
 ```
-- Accessible at `ws://localhost:8080/mcp`
+- Accessible at `http://localhost:8080/mcp`
 - Health check at `http://localhost:8080/health`
-- Server info at `http://localhost:8080/`
-
-### Stdio Mode
-```bash
-# For MCP clients using stdio
-./app/bin/brewsource-mcp -mode=stdio
-```
-- Reads JSON-RPC messages from stdin
-- Writes responses to stdout
-- Used for local MCP integrations
+- Version info at `http://localhost:8080/version`
+- Server info at `http://localhost:8080/api`
 
 ## Phase 1 MVP Tools
 

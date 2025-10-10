@@ -1,0 +1,116 @@
+/* Dark theme overrides for BrewSource MCP landing page */
+body {
+  background: linear-gradient(120deg, #23272f 0%, #2c3e50 100%);
+  color: #f3f4f6;
+}
+
+.hero-title {
+  color: #f3f4f6;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 13%);
+}
+
+.hero-tagline {
+  color: #bfc9d1;
+}
+
+.hero-cta {
+  background: linear-gradient(90deg, #217dbb 0%, #1e824c 100%);
+  color: #fff;
+}
+
+.hero-cta:hover {
+  background: linear-gradient(90deg, #3498db 0%, #27ae60 100%);
+}
+
+.icon-button {
+  background: #e0e7ef;
+  color: #f3f4f6;
+}
+
+.icon-button.svg.fill {
+  color: #f3f4f6;
+}
+
+.status-card {
+  background: #23272f;
+  color: #f3f4f6;
+  border-color: #2c3e50;
+}
+
+.status-header {
+  border-bottom: 1px solid #2c3e50;
+}
+
+.status-title {
+  color: #f3f4f6;
+}
+
+.status-label {
+  color: #bfc9d1;
+}
+
+.status-value {
+  color: #f3f4f6;
+}
+
+.content {
+  background: #23272f;
+  color: #f3f4f6;
+}
+
+.content h1 {
+  color: #f3f4f6;
+  border-bottom: 3px solid #217dbb;
+}
+
+.content h2 {
+  color: #bfc9d1;
+  border-bottom: 2px solid #2c3e50;
+}
+
+.content h3 {
+  color: #bfc9d1;
+}
+
+.content code {
+  background: #23272f;
+  color: #f3f4f6;
+}
+
+.content pre {
+  background: #1a1d22;
+  color: #f3f4f6;
+}
+
+.content blockquote {
+  border-left: 4px solid #217dbb;
+  color: #bfc9d1;
+}
+
+.content th {
+  background-color: #23272f;
+  color: #f3f4f6;
+}
+
+.feature-card {
+  background: #23272f;
+  color: #f3f4f6;
+  border-color: #2c3e50;
+}
+
+.feature-title {
+  color: #f3f4f6;
+}
+
+.feature-desc {
+  color: #bfc9d1;
+}
+
+.footer {
+  background: rgb(35 39 47 / 95%);
+  color: #bfc9d1;
+}
+
+.footer-updated {
+  color: #bfc9d1;
+}

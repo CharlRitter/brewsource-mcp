@@ -8,21 +8,20 @@ namespace: brewsource-dev
 
 resources:
   - ../base
+  - namespace.yaml
+  - postgres-secret.yaml
 
-commonLabels:
-  environment: development
+labels:
+  - pairs:
+      environment: development
 
-patchesStrategicMerge:
-  - patches/brewsource-dev.yaml
-  - patches/postgres-dev.yaml
+patches:
+  - path: patches/brewsource-dev.yaml
+  - path: patches/postgres-dev.yaml
 
 configMapGenerator:
   - name: brewsource-config
     behavior: merge
     literals:
       - LOG_LEVEL=debug
-      - DATABASE_URL=postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource_dev?sslmode=disable
-
-images:
-  - name: brewsource-mcp
-    newTag: dev
+      - DATABASE_URL=postgres://brewsource_user:devpassword123@postgres:5432/brewsource_dev?sslmode=disable

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: brewsource-mcp
 data:
-  DATABASE_URL: "postgres://brewsource_user:brewsource_pass@postgres:5432/brewsource?sslmode=disable"
+  DATABASE_URL: "postgres://brewsource_user:placeholder@postgres:5432/brewsource?sslmode=disable"
   REDIS_URL: "redis://redis:6379/0"
   PORT: "8080"
   LOG_LEVEL: "info"
@@ -27,9 +27,13 @@ spec:
       labels:
         app: brewsource-mcp
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: brewsource-mcp
-        image: brewsource-mcp:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+        image: ghcr.io/charlritter/brewsource-mcp:latest
         ports:
         - containerPort: 8080
         envFrom:

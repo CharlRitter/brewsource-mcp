@@ -40,10 +40,7 @@ const (
 
 func main() {
 	// Command line flags
-	var (
-		mode = flag.String("mode", "websocket", "Server mode: websocket or stdio")
-		port = flag.String("port", "8080", "Port for WebSocket server")
-	)
+	port := flag.String("port", "8080", "Port for HTTP server")
 	flag.Parse()
 
 	// Initialize logger
@@ -90,36 +87,57 @@ func main() {
 	// Initialize handlers
 	toolHandlers := handlers.NewToolHandlers(bjcpData, beerService, breweryService)
 	resourceHandlers := handlers.NewResourceHandlers(bjcpData, beerService, breweryService)
+	webHandlers := handlers.NewWebHandlers(db, redisClient)
 
 	// Initialize MCP server
 	mcpServer := mcp.NewServer(toolHandlers, resourceHandlers)
 
-	// Register /version resource handler
-	mcpServer.RegisterResourceHandler("/version", handlers.VersionResourceHandler())
+	// Run server
+	RunHTTPServer(mcpServer, webHandlers, *port)
+	cleanup()
+}
 
-	// Register /health resource handler
-	mcpServer.RegisterResourceHandler("/health", handlers.HealthResourceHandler())
+// RunHTTPServer starts the HTTP server for MCP connections over HTTP POST.
+func RunHTTPServer(mcpServer *mcp.Server, webHandlers *handlers.WebHandlers, port string) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", webHandlers.ServeHome)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.HandlerFunc(webHandlers.ServeStatic)))
+	mux.HandleFunc("/api", webHandlers.ServeAPI)
+	mux.HandleFunc("/health", webHandlers.ServeHealth)
+	mux.HandleFunc("/version", webHandlers.ServeVersion)
+	mux.HandleFunc("/mcp", mcpServer.HandleHTTP)
 
-	// Run server based on mode
-	var shouldDefer bool
-	switch *mode {
-	case "websocket":
-		shouldDefer = true
-		RunWebSocketServer(mcpServer, *port)
-	case "stdio":
-		shouldDefer = true
-		RunStdioServer(mcpServer)
-	default:
-		cleanup()
-		log.Fatalf("Unknown mode: %s. Use 'websocket' or 'stdio'", *mode)
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
-	// Cleanup for normal execution paths
-	if shouldDefer {
-		cleanup()
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+
+		logrus.Info("Shutting down HTTP server...")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			logrus.Errorf("HTTP server shutdown error: %v", err)
+		}
+	}()
+
+	logrus.Infof("Starting HTTP MCP server on port %s", port)
+	logrus.Infof("MCP endpoint: http://localhost:%s/mcp", port)
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("HTTP server failed to start: %v", err)
 	}
 }
 
+// InitDatabase initializes and configures the PostgreSQL database connection.
 func InitDatabase() (*sqlx.DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -151,6 +169,7 @@ func InitDatabase() (*sqlx.DB, error) {
 	return db, nil
 }
 
+// InitRedis initializes and configures the Redis client connection.
 func InitRedis(redisURL string) *redis.Client {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -171,78 +190,4 @@ func InitRedis(redisURL string) *redis.Client {
 
 	logrus.Info("Redis initialized successfully")
 	return client
-}
-
-func RunWebSocketServer(mcpServer *mcp.Server, port string) {
-	// Create HTTP server
-	mux := http.NewServeMux()
-
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status": "healthy", "service": "brewsource-mcp", "version": "1.0.0"}`)
-	})
-
-	// Server info endpoint
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{
-			"name": "BrewSource MCP Server",
-			"version": "1.0.0",
-			"description": "Model Context Protocol server for brewing resources",
-			"endpoints": {
-				"mcp": "/mcp",
-				"health": "/health"
-			},
-			"phase": "Phase 1 MVP"
-		}`)
-	})
-
-	// MCP WebSocket endpoint
-	mux.HandleFunc("/mcp", mcpServer.HandleWebSocket)
-
-	// Create server with timeouts
-	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-	}
-
-	// Graceful shutdown
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-		<-sigChan
-
-		logrus.Info("Shutting down server...")
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-		defer cancel()
-
-		if err := server.Shutdown(ctx); err != nil {
-			logrus.Errorf("Server shutdown error: %v", err)
-		}
-	}()
-
-	logrus.Infof("Starting WebSocket server on port %s", port)
-	logrus.Infof("MCP endpoint: ws://localhost:%s/mcp", port)
-
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server failed to start: %v", err)
-	}
-}
-
-func RunStdioServer(mcpServer *mcp.Server) {
-	logrus.Info("Starting stdio server")
-
-	if err := mcpServer.HandleStdio(); err != nil {
-		log.Fatalf("Stdio server error: %v", err)
-	}
 }

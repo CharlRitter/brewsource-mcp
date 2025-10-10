@@ -5,13 +5,14 @@ metadata:
   name: brewsource-mcp-base
 
 resources:
+  - brewsource-mcp.yaml
   - postgres.yaml
   - redis.yaml
-  - brewsource-mcp.yaml
 
-commonLabels:
-  project: brewsource-mcp
-  environment: base
+labels:
+  - pairs:
+      project: brewsource-mcp
+      environment: base
 
 images:
   - name: brewsource-mcp
