@@ -2,8 +2,10 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -11,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/CharlRitter/brewsource-mcp/app/internal/mcp"
-	"github.com/gorilla/websocket"
 )
 
 // Helper function to validate tools list response structure.
@@ -410,90 +411,112 @@ func TestProcessMessage_ResourcesRead(t *testing.T) {
 	}
 }
 
-// Helper function to send and receive WebSocket messages.
-func sendReceiveWSMessage(t *testing.T, ws *websocket.Conn, message *mcp.Message) *mcp.Message {
-	data, marshalErr := json.Marshal(message)
-	if marshalErr != nil {
-		t.Fatalf("failed to marshal message: %v", marshalErr)
-	}
-
-	if writeErr := ws.WriteMessage(websocket.TextMessage, data); writeErr != nil {
-		t.Fatalf("failed to write message: %v", writeErr)
-	}
-
-	_, resp, readErr := ws.ReadMessage()
-	if readErr != nil {
-		t.Fatalf("failed to read message: %v", readErr)
-	}
-
-	var response mcp.Message
-	if unmarshalErr := json.Unmarshal(resp, &response); unmarshalErr != nil {
-		t.Fatalf("failed to unmarshal response: %v", unmarshalErr)
-	}
-
-	return &response
-}
-
-// Helper function to validate WebSocket response.
-func validateWSResponse(t *testing.T, response *mcp.Message, wantErr bool, _ func([]byte) bool) {
-	if wantErr {
-		if response.Error == nil {
-			t.Error("expected error response")
-		}
-		// Note: errCheck validation would need the raw response bytes, which we don't have here
-		// In a real scenario, you might want to restructure this
-	} else if response.Result == nil {
-		t.Error("expected successful response")
-	}
-}
-
-func TestHandleWebSocket(t *testing.T) {
+func TestHandleHTTP(t *testing.T) {
 	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
-	server := httptest.NewServer(http.HandlerFunc(s.HandleWebSocket))
+	handler := http.HandlerFunc(s.HandleHTTP)
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	// Convert http to ws
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	t.Run("valid initialization", func(t *testing.T) {
+		testHandleHTTPValidInitialization(t, server.URL)
+	})
+	t.Run("invalid method", func(t *testing.T) {
+		testHandleHTTPInvalidMethod(t, server.URL)
+	})
+	t.Run("invalid JSON", func(t *testing.T) {
+		testHandleHTTPInvalidJSON(t, server.URL)
+	})
+	t.Run("wrong HTTP method", func(t *testing.T) {
+		testHandleHTTPWrongMethod(t, server.URL)
+	})
+}
 
-	// Connect to the test server
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+func testHandleHTTPValidInitialization(t *testing.T, url string) {
+	msg := &mcp.Message{
+		JSONRPC: "2.0",
+		ID:      "1",
+		Method:  "initialize",
+		Params:  map[string]interface{}{"clientInfo": map[string]interface{}{}},
+	}
+	body, _ := json.Marshal(msg)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
-		t.Fatalf("could not open websocket connection: %v", err)
+		t.Fatalf("Failed to create request: %v", err)
 	}
-	defer ws.Close()
-
-	tests := []struct {
-		name     string
-		message  *mcp.Message
-		wantErr  bool
-		errCheck func([]byte) bool
-	}{
-		{
-			name: "valid initialization",
-			message: &mcp.Message{
-				JSONRPC: "2.0",
-				ID:      "1",
-				Method:  "initialize",
-				Params:  map[string]interface{}{"clientInfo": map[string]interface{}{}},
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid message",
-			message: &mcp.Message{
-				JSONRPC: "2.0",
-				ID:      "2",
-				Method:  "unknown",
-			},
-			wantErr: true,
-		},
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
 	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	data, _ := io.ReadAll(resp.Body)
+	var mcpResp mcp.Message
+	if jsonErr := json.Unmarshal(data, &mcpResp); jsonErr != nil {
+		t.Errorf("Failed to unmarshal MCP response: %v", jsonErr)
+	}
+	if mcpResp.Error != nil {
+		t.Error("Expected successful response for valid initialization")
+	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			response := sendReceiveWSMessage(t, ws, tt.message)
-			validateWSResponse(t, response, tt.wantErr, tt.errCheck)
-		})
+func testHandleHTTPInvalidMethod(t *testing.T, url string) {
+	msg := &mcp.Message{
+		JSONRPC: "2.0",
+		ID:      "2",
+		Method:  "unknown_method",
+	}
+	body, _ := json.Marshal(msg)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	data, _ := io.ReadAll(resp.Body)
+	var mcpResp mcp.Message
+	if jsonErr := json.Unmarshal(data, &mcpResp); jsonErr != nil {
+		t.Errorf("Failed to unmarshal MCP response: %v", jsonErr)
+	}
+	if mcpResp.Error == nil {
+		t.Error("Expected error response for unknown method")
+	}
+}
+
+func testHandleHTTPInvalidJSON(t *testing.T, url string) {
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString("{"))
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, resp.StatusCode)
+	}
+}
+
+func testHandleHTTPWrongMethod(t *testing.T, url string) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status %d, got %d", http.StatusMethodNotAllowed, resp.StatusCode)
 	}
 }
 
@@ -546,33 +569,6 @@ func TestProcessMessage_InvalidMessage(t *testing.T) {
 	if resp == nil || resp.Error == nil {
 		t.Error("expected error response for invalid message")
 	}
-}
-
-// Test HandleStdio function (limited test due to stdio nature).
-func TestHandleStdio(t *testing.T) {
-	s := mcp.NewServer(&mockToolRegistry{}, &mockResourceRegistry{})
-
-	// We can't easily test the full stdio functionality without mocking os.Stdin,
-	// but we can test that the function exists and doesn't panic when called
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("HandleStdio panicked: %v", r)
-		}
-	}()
-
-	// Create a goroutine to call HandleStdio and let it fail gracefully
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			done <- true
-		}()
-		// This will fail quickly due to no stdin input, which is expected in tests
-		_ = s.HandleStdio()
-	}()
-
-	// Wait a short time for the function to start and fail
-	<-done
-	// Function completed, which is expected
 }
 
 // Test utility functions: contains, indexOf, isValidURI.

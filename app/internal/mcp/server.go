@@ -2,23 +2,20 @@
 package mcp
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
 	"sync"
 
-	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
 	tools     map[string]ToolHandler
 	resources map[string]ResourceHandler
-	upgrader  websocket.Upgrader
 	mu        sync.RWMutex
 }
 
@@ -36,12 +33,6 @@ func NewServer(toolRegistry ToolHandlerRegistry, resourceRegistry ResourceHandle
 	server := &Server{
 		tools:     make(map[string]ToolHandler),
 		resources: make(map[string]ResourceHandler),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(_ *http.Request) bool {
-				// In production, implement proper origin checking
-				return true
-			},
-		},
 	}
 
 	// Register handlers if registries are provided
@@ -53,6 +44,44 @@ func NewServer(toolRegistry ToolHandlerRegistry, resourceRegistry ResourceHandle
 	}
 
 	return server
+}
+
+// HandleHTTP handles MCP requests over HTTP POST.
+func (s *Server) HandleHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	defer r.Body.Close()
+	ctx := r.Context()
+	var data []byte
+	var err error
+	data, err = io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	// Check for invalid JSON before processing
+	var check map[string]interface{}
+	if jsonErr := json.Unmarshal(data, &check); jsonErr != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	response := s.ProcessMessage(ctx, data)
+	w.Header().Set("Content-Type", "application/json")
+	if response != nil {
+		responseData, merr := json.Marshal(response)
+		if merr != nil {
+			http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(responseData)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func (s *Server) RegisterToolHandler(name string, handler ToolHandler) {
@@ -67,76 +96,6 @@ func (s *Server) RegisterResourceHandler(pattern string, handler ResourceHandler
 	defer s.mu.Unlock()
 	s.resources[pattern] = handler
 	logrus.Debugf("Registered resource handler: %s", pattern)
-}
-
-func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		logrus.Errorf("WebSocket upgrade failed: %v", err)
-		return
-	}
-	defer conn.Close()
-
-	logrus.Info("New WebSocket connection established")
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for {
-		_, data, rerr := conn.ReadMessage()
-		if rerr != nil {
-			if websocket.IsUnexpectedCloseError(rerr, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logrus.Errorf("WebSocket error: %v", rerr)
-			}
-			break
-		}
-
-		response := s.ProcessMessage(ctx, data)
-		if response != nil {
-			responseData, merr := json.Marshal(response)
-			if merr != nil {
-				logrus.Errorf("Failed to marshal response: %v", merr)
-				continue
-			}
-
-			if werr := conn.WriteMessage(websocket.TextMessage, responseData); werr != nil {
-				logrus.Errorf("Failed to write WebSocket message: %v", werr)
-				break
-			}
-		}
-	}
-
-	logrus.Info("WebSocket connection closed")
-}
-
-func (s *Server) HandleStdio() error {
-	scanner := bufio.NewScanner(os.Stdin)
-	ctx := context.Background()
-
-	logrus.Info("Stdio server ready")
-
-	for scanner.Scan() {
-		data := scanner.Bytes()
-		response := s.ProcessMessage(ctx, data)
-
-		if response != nil {
-			responseData, err := json.Marshal(response)
-			if err != nil {
-				logrus.Errorf("Failed to marshal response: %v", err)
-				continue
-			}
-
-			if _, writeErr := os.Stdout.Write(append(responseData, '\n')); writeErr != nil {
-				logrus.Errorf("Failed to write response to stdout: %v", writeErr)
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("stdio scanner error: %w", err)
-	}
-
-	return nil
 }
 
 func (s *Server) ProcessMessage(ctx context.Context, data []byte) *Message {

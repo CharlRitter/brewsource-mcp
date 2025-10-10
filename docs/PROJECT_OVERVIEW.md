@@ -45,11 +45,11 @@ To provide a comprehensive, open-source brewing knowledge platform that demonstr
 - **Protocol**: Model Context Protocol (MCP) for AI assistant integration
 - **Database**: PostgreSQL for structured data storage
 - **Caching**: Redis for performance optimization
-- **Communication**: WebSocket and stdio for flexible client connections
+- **Communication**: HTTP for client connections
 
 ### Key Components
 
-1. **MCP Protocol Layer**: Handles AI assistant communication
+1. **MCP Protocol Layer**: Handles AI assistant communication over HTTP POST at `/mcp`
 2. **BJCP Style Database**: Complete beer style guidelines and lookup
 3. **Beer/Brewery Catalog**: Commercial beer and brewery information
 4. **Public API**: Three core endpoints for essential brewing queries
@@ -60,7 +60,7 @@ To provide a comprehensive, open-source brewing knowledge platform that demonstr
 
 - **MCP Reference Implementation**: Demonstrates best practices for MCP server development
 - **AI-Native Design**: Built specifically for AI assistant integration
-- **Protocol Flexibility**: Supports multiple connection modes and clients
+- **Protocol Flexibility**: HTTP is the primary protocol
 
 ### Data Quality
 

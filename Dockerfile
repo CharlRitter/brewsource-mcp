@@ -21,4 +21,4 @@ COPY VERSION ./VERSION
 COPY app/data/ ./data/
 USER nonroot:nonroot
 EXPOSE 8080
-CMD ["./brewsource-mcp", "-mode=websocket", "-port=8080"]
+CMD ["./brewsource-mcp", "-port=8080"]

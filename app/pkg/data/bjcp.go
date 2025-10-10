@@ -1,5 +1,4 @@
 // Package data provides utilities for loading and handling BJCP data for Brewsource MCP.
-// Package data provides utilities for loading and handling BJCP data for Brewsource MCP.
 package data
 
 import (
