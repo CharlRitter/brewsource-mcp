@@ -136,7 +136,6 @@ header.hero {
 .status-title {
   font-size: 1.25rem;
   font-weight: 700;
-  margin-right: 0.5rem;
 }
 
 .status-indicator-text {
@@ -355,6 +354,14 @@ a:not(.hero-cta):focus {
   display: flex;
   align-items: center;
   gap: 0.7em;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-author-social-button-group {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
 }
 
 .icon-button {
@@ -368,7 +375,6 @@ a:not(.hero-cta):focus {
   background: #f3f4f6;
   box-shadow: 0 1px 4px rgb(0 0 0 / 7%);
   transition: background 0.2s, box-shadow 0.2s, transform 0.18s;
-  margin: 0 2px;
 }
 
 .icon-button img {
@@ -388,7 +394,6 @@ a:not(.hero-cta):focus {
   color: #9ba3ad;
   font-size: 0.97rem;
   font-weight: 400;
-  margin-left: 0.5em;
 }
 
 .footer-heart {
@@ -400,7 +405,7 @@ a:not(.hero-cta):focus {
   color: #7f8c8d;
 }
 
-@media (width <= 768px) {
+@media (width <= 576px) {
   body {
     padding: 1rem 1rem 0;
   }
@@ -416,6 +421,36 @@ a:not(.hero-cta):focus {
   }
 
   .footer {
-  justify-content: center;
-}
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .hero-title {
+    overflow-wrap: anywhere;
+  }
+
+  .status-header {
+    overflow-wrap: anywhere;
+  }
+
+  .status-label {
+    min-width: unset;
+    overflow-wrap: anywhere;
+  }
+
+  .status-value {
+    min-width: unset;
+    overflow-wrap: anywhere;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .status-desc {
+    overflow-wrap: anywhere;
+  }
+
+  .content {
+    overflow-wrap: anywhere;
+  }
 }
