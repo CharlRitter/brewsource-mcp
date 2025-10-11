@@ -62,7 +62,6 @@ brewsource-mcp/
 │   │   ├── models/      # Database models and seed data
 │   │   └── services/    # Business logic services
 │   └── pkg/data/        # BJCP data utilities
-├── bridge/              # Node.js bridge for MCP integration
 ├── docs/                # Project documentation
 ├── k8s/                 # Kubernetes manifests
 ├── .github/             # GitHub workflow and templates
