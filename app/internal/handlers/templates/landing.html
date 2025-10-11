@@ -140,7 +140,7 @@
             >
             &nbsp;|&nbsp;
             <a
-              href="https://www.bjcp.org/style-guidelines/"
+              href="https://www.bjcp.org/bjcp-style-guidelines/"
               target="_blank"
               rel="noopener"
               aria-label="BJCP Guidelines"
@@ -204,30 +204,32 @@
     <footer class="footer" role="contentinfo">
       <div class="footer-author-social">
         <span>by Charl Ritter</span>
-        <a
-          href="https://www.linkedin.com/in/charl-ritter-0a1a45130/"
-          target="_blank"
-          rel="noopener"
-          title="LinkedIn"
-          class="icon-button"
-          aria-label="Charl Ritter on LinkedIn"
-        >
-          <svg width="26" height="26" aria-hidden="true" focusable="false">
-            <use xlink:href="/static/icons.svg#linkedin"></use>
-          </svg>
-        </a>
-        <a
-          href="https://github.com/CharlRitter"
-          target="_blank"
-          rel="noopener"
-          title="GitHub"
-          class="icon-button"
-          aria-label="Charl Ritter on GitHub"
-        >
-          <svg width="26" height="26" aria-hidden="true" focusable="false">
-            <use xlink:href="/static/icons.svg#github"></use>
-          </svg>
-        </a>
+        <div class="footer-author-social-button-group">
+          <a
+            href="https://www.linkedin.com/in/charl-ritter-0a1a45130/"
+            target="_blank"
+            rel="noopener"
+            title="LinkedIn"
+            class="icon-button"
+            aria-label="Charl Ritter on LinkedIn"
+          >
+            <svg width="26" height="26" aria-hidden="true" focusable="false">
+              <use xlink:href="/static/icons.svg#linkedin"></use>
+            </svg>
+          </a>
+          <a
+            href="https://github.com/CharlRitter"
+            target="_blank"
+            rel="noopener"
+            title="GitHub"
+            class="icon-button"
+            aria-label="Charl Ritter on GitHub"
+          >
+            <svg width="26" height="26" aria-hidden="true" focusable="false">
+              <use xlink:href="/static/icons.svg#github"></use>
+            </svg>
+          </a>
+        </div>
       </div>
       <span class="footer-updated">Last Updated: {{.LastUpdated}}</span>
       <span>&copy; 2025 BrewSource MCP Server</span>
